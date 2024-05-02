@@ -110,6 +110,7 @@ Variables starting with ``cln_`` query your own gossip, ``amboss_`` the [Amboss]
 Example: ``their_funding_sat >= 1000000 && their_funding_sat <= 50000000 && (amboss_has_email==true || amboss_has_nostr==true)`` will accept channels that are between 1000000 and 50000000 sats in size and either have a email or nostr info on amboss
 
 # Options
+:warning:Only options in your config file(s) (network and general config file) will be used! *Not* the ones you can provide with the ``lightning-cli plugin start`` command! Use ``clnrod-reload`` to read the options while cln is running.
 ### general
 * ``clnrod-denymessage``: The custom message we will send to a rejected peer, default to none
 * ``clnrod-blockmode``: Set the preferred block mode to *allow* or *deny*, defaults to *deny* (with no config clnrod accepts all channels, see Documentation)
