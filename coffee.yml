@@ -1,0 +1,9 @@
+plugin:
+  name: clnrod
+  version: 0.1.0
+  lang: rust
+  install: |
+    cargo build --release && cp target/release/clnrod . && cargo clean
+  main: clnrod
+tipping:
+  bolt12: lno1pgrxxmrwwfhkg93pqwqw7qsflud5dsu2xlx5pasn68dw86aysx5sj3vads2rfg89dewcc
