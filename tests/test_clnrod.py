@@ -125,6 +125,9 @@ def test_clnrod_custom_gossip(node_factory, bitcoind, get_plugin):  # noqa: F811
     l1.rpc.call("clnrod-reload")
 
     wait_for(
+        lambda: len(l1.rpc.call("listnodes", [l2.info["id"]])["nodes"]) > 0
+    )
+    wait_for(
         lambda: "features"
         in l1.rpc.call("listnodes", [l2.info["id"]])["nodes"][0]
     )
@@ -180,6 +183,9 @@ def test_clnrod_custom_gossip_v2(node_factory, bitcoind, get_plugin):  # noqa: F
     )
     l1.rpc.call("clnrod-reload")
 
+    wait_for(
+        lambda: len(l1.rpc.call("listnodes", [l2.info["id"]])["nodes"]) > 0
+    )
     wait_for(
         lambda: "features"
         in l1.rpc.call("listnodes", [l2.info["id"]])["nodes"][0]
