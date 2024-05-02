@@ -83,8 +83,9 @@ def test_clnrod_custom_gossip(node_factory, bitcoind, get_plugin):  # noqa: F811
         opts=[
             {
                 "plugin": get_plugin,
+                "experimental-anchors": None,
             },
-            {},
+            {"experimental-anchors": None},
         ],
     )
     with open(l1.info["lightning-dir"] + "/config", "a") as af:
@@ -126,9 +127,11 @@ def test_clnrod_custom_gossip_v2(node_factory, bitcoind, get_plugin):  # noqa: F
             {
                 "plugin": get_plugin,
                 "experimental-dual-fund": None,
+                "experimental-anchors": None,
             },
             {
                 "experimental-dual-fund": None,
+                "experimental-anchors": None,
             },
         ],
     )
