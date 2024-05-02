@@ -43,6 +43,7 @@ After that the binary will be here: ``target/release/clnrod``
 Note: Release binaries are built using ``cross`` and the ``optimized`` profile.
 
 # Documentation
+If you want to make sure that no channels open to you without going through this plugin, install it as an ``important-plugin``. CLN will stop completely if the plugin should ever crash. If you only install clnrod as a normal plugin and it crashes, all channels will be accepted as usual.
 ## Rpc methods
 New rpc methods with this plugin:
 
