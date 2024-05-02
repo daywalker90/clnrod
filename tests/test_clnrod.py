@@ -45,9 +45,13 @@ def test_clnrod_custom_deny(node_factory, get_plugin):  # noqa: F811
     l1.rpc.call("clnrod-reload")
 
     l2.fundwallet(10_000_000)
-    l2.rpc.connect(l1.info["id"], "localhost", l1.port)
     try:
-        l2.rpc.fundchannel(l1.info["id"], 1_000_000, mindepth=1, announce=False)
+        l2.rpc.fundchannel(
+            l1.info["id"] + "@localhost:" + str(l1.port),
+            1_000_000,
+            mindepth=1,
+            announce=False,
+        )
     except RpcError as err:
         assert "No thanks" in err.error["message"]
 
@@ -70,8 +74,12 @@ def test_clnrod_custom_allow(node_factory, get_plugin):  # noqa: F811
     l1.rpc.call("clnrod-reload")
 
     l2.fundwallet(10_000_000)
-    l2.rpc.connect(l1.info["id"], "localhost", l1.port)
-    l2.rpc.fundchannel(l1.info["id"], 1_000_000, mindepth=1, announce=True)
+    l2.rpc.fundchannel(
+        l1.info["id"] + "@localhost:" + str(l1.port),
+        1_000_000,
+        mindepth=1,
+        announce=True,
+    )
     wait_for(
         lambda: len(l1.rpc.listpeerchannels(l2.info["id"])["channels"]) > 0
     )
@@ -96,8 +104,12 @@ def test_clnrod_custom_gossip(node_factory, bitcoind, get_plugin):  # noqa: F811
     l1.rpc.call("clnrod-reload")
 
     l2.fundwallet(10_000_000)
-    l2.rpc.connect(l1.info["id"], "localhost", l1.port)
-    l2.rpc.fundchannel(l1.info["id"], 1_000_000, mindepth=1, announce=True)
+    l2.rpc.fundchannel(
+        l1.info["id"] + "@localhost:" + str(l1.port),
+        1_000_000,
+        mindepth=1,
+        announce=True,
+    )
     bitcoind.generate_block(6)
     sync_blockheight(bitcoind, [l1, l2])
 
@@ -117,7 +129,12 @@ def test_clnrod_custom_gossip(node_factory, bitcoind, get_plugin):  # noqa: F811
         in l1.rpc.call("listnodes", [l2.info["id"]])["nodes"][0]
     )
 
-    l2.rpc.fundchannel(l1.info["id"], 1_000_000, mindepth=1, announce=True)
+    l2.rpc.fundchannel(
+        l1.info["id"] + "@localhost:" + str(l1.port),
+        1_000_000,
+        mindepth=1,
+        announce=True,
+    )
 
 
 def test_clnrod_custom_gossip_v2(node_factory, bitcoind, get_plugin):  # noqa: F811
@@ -143,8 +160,12 @@ def test_clnrod_custom_gossip_v2(node_factory, bitcoind, get_plugin):  # noqa: F
     l1.rpc.call("clnrod-reload")
 
     l2.fundwallet(10_000_000)
-    l2.rpc.connect(l1.info["id"], "localhost", l1.port)
-    l2.rpc.fundchannel(l1.info["id"], 1_000_000, mindepth=1, announce=True)
+    l2.rpc.fundchannel(
+        l1.info["id"] + "@localhost:" + str(l1.port),
+        1_000_000,
+        mindepth=1,
+        announce=True,
+    )
     bitcoind.generate_block(6)
     sync_blockheight(bitcoind, [l1, l2])
 
@@ -164,7 +185,12 @@ def test_clnrod_custom_gossip_v2(node_factory, bitcoind, get_plugin):  # noqa: F
         in l1.rpc.call("listnodes", [l2.info["id"]])["nodes"][0]
     )
 
-    l2.rpc.fundchannel(l1.info["id"], 1_000_000, mindepth=1, announce=True)
+    l2.rpc.fundchannel(
+        l1.info["id"] + "@localhost:" + str(l1.port),
+        1_000_000,
+        mindepth=1,
+        announce=True,
+    )
 
 
 def test_clnrod_allowlist(node_factory, get_plugin):  # noqa: F811
@@ -185,25 +211,38 @@ def test_clnrod_allowlist(node_factory, get_plugin):  # noqa: F811
     l1.rpc.call("clnrod-reload")
 
     l2.fundwallet(10_000_000)
-    l2.rpc.connect(l1.info["id"], "localhost", l1.port)
 
     try:
-        l2.rpc.fundchannel(l1.info["id"], 1_000_000, mindepth=1, announce=True)
+        l2.rpc.fundchannel(
+            l1.info["id"] + "@localhost:" + str(l1.port),
+            1_000_000,
+            mindepth=1,
+            announce=True,
+        )
     except RpcError as err:
         assert "No thanks" in err.error["message"]
 
     with open(l1.info["lightning-dir"] + "/clnrod/allowlist.txt", "w") as af:
         af.writelines(l2.info["id"] + "\n")
 
-    l2.rpc.connect(l1.info["id"], "localhost", l1.port)
     try:
-        l2.rpc.fundchannel(l1.info["id"], 1_000_000, mindepth=1, announce=True)
+        l2.rpc.fundchannel(
+            l1.info["id"] + "@localhost:" + str(l1.port),
+            1_000_000,
+            mindepth=1,
+            announce=True,
+        )
     except RpcError as err:
         assert "No thanks" in err.error["message"]
 
     l1.rpc.call("clnrod-reload")
 
-    l2.rpc.fundchannel(l1.info["id"], 1_000_000, mindepth=1, announce=True)
+    l2.rpc.fundchannel(
+        l1.info["id"] + "@localhost:" + str(l1.port),
+        1_000_000,
+        mindepth=1,
+        announce=True,
+    )
     wait_for(
         lambda: len(l1.rpc.listpeerchannels(l2.info["id"])["channels"]) > 0
     )
@@ -227,16 +266,25 @@ def test_clnrod_denylist(node_factory, bitcoind, get_plugin):  # noqa: F811
     l1.rpc.call("clnrod-reload")
 
     l2.fundwallet(10_000_000)
-    l2.rpc.connect(l1.info["id"], "localhost", l1.port)
 
-    l2.rpc.fundchannel(l1.info["id"], 1_000_000, mindepth=1, announce=True)
+    l2.rpc.fundchannel(
+        l1.info["id"] + "@localhost:" + str(l1.port),
+        1_000_000,
+        mindepth=1,
+        announce=True,
+    )
     bitcoind.generate_block(6)
     sync_blockheight(bitcoind, [l1, l2])
 
     with open(l1.info["lightning-dir"] + "/clnrod/denylist.txt", "w") as af:
         af.writelines(l2.info["id"] + "\n")
 
-    l2.rpc.fundchannel(l1.info["id"], 1_000_000, mindepth=1, announce=True)
+    l2.rpc.fundchannel(
+        l1.info["id"] + "@localhost:" + str(l1.port),
+        1_000_000,
+        mindepth=1,
+        announce=True,
+    )
     bitcoind.generate_block(6)
     sync_blockheight(bitcoind, [l1, l2])
 
@@ -247,6 +295,11 @@ def test_clnrod_denylist(node_factory, bitcoind, get_plugin):  # noqa: F811
     l1.rpc.call("clnrod-reload")
 
     try:
-        l2.rpc.fundchannel(l1.info["id"], 1_000_000, mindepth=1, announce=True)
+        l2.rpc.fundchannel(
+            l1.info["id"] + "@localhost:" + str(l1.port),
+            1_000_000,
+            mindepth=1,
+            announce=True,
+        )
     except RpcError as err:
         assert "No thanks" in err.error["message"]
