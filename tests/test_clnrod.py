@@ -195,6 +195,7 @@ def test_clnrod_allowlist(node_factory, get_plugin):  # noqa: F811
     with open(l1.info["lightning-dir"] + "/clnrod/allowlist.txt", "w") as af:
         af.writelines(l2.info["id"] + "\n")
 
+    l2.rpc.connect(l1.info["id"], "localhost", l1.port)
     try:
         l2.rpc.fundchannel(l1.info["id"], 1_000_000, mindepth=1, announce=True)
     except RpcError as err:
