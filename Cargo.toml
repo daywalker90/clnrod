@@ -1,0 +1,34 @@
+[package]
+name = "clnrod"
+version = "0.1.0"
+edition = "2021"
+
+
+[dependencies]
+anyhow = "1.0"
+log = { version = "0.4", features = ['std'] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+parking_lot = "0.12"
+pest = "2"
+pest_derive = "2"
+
+cln-rpc = "0.1.8"
+# cln-rpc = { path="../lightning/cln-rpc/", version = "^0.1" }
+cln-plugin = "0.1.8"
+# cln-plugin = { path="../lightning/plugins/", version = "^0.1" }
+
+reqwest = { version = "0.12", default-features = false, features = ["http2", "json","rustls-tls"] }
+lettre = {version = "0.11", default-features = false, features = ["tokio1-rustls-tls","smtp-transport","builder"]}
+log-panics = "2"
+
+[dependencies.tokio]
+features = ["fs","net", "rt-multi-thread"]
+version = "1"
+
+[profile.optimized]
+inherits = "release"
+strip = "debuginfo"
+codegen-units = 1
+lto = "fat"
+debug = false
