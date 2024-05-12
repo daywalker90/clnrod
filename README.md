@@ -48,7 +48,7 @@ If you want to make sure that no channels open to you without going through this
 New rpc methods with this plugin:
 
 * **clnrod-reload**
-    * reload all config options, block lists and empty cache
+    * reload ``allowlist.txt``/``denylist.txt``
 * **clnrod-testrule** *pubkey* *public* *their_funding_sat* *rule*
     * test your custom *rule* with a fake channel opening by a peer with *pubkey* who will make the channel *public* and *their_funding_sat* big
     * example: ``lightning-cli clnrod-testrule -k pubkey=02eadbd9e7557375161df8b646776a547c5cbc2e95b3071ec81553f8ec2cea3b8c public=true their_funding_sat=1000000 rule='amboss_terminal_web_rank < 1000'`` 
@@ -71,7 +71,7 @@ Setting the blockmode to deny means:
 Email configuration is optional and everything gets logged regardless
 
 ## Custom rule
-The custom rule option can be made up of the following symbols:
+The custom rule can make use of the following symbols:
 * ``&&`` logical and
 * ``||`` logical or
 * ``()`` parentheses to specify the order of operations
@@ -84,7 +84,7 @@ The custom rule option can be made up of the following symbols:
 * a boolean value is either ``true`` or ``false``
 
 ### Variables
-Variables starting with ``cln_`` query your own gossip, ``amboss_`` the [Amboss](https://amboss.space) API and ``oneml_`` the [1ML](https://1ml.com/) API. There is an one hour cache for collecting data.
+Variables starting with ``cln_`` query your own gossip, ``amboss_`` the [Amboss](https://amboss.space) API and ``oneml_`` the [1ML](https://1ml.com/) API. There is an one hour cache for collecting data that will be reset if you change the ``clnrod-customrule`` option.
 * ``their_funding_sat``: how much sats they are willing to open with on their side
 * ``public``: if the peer intends to open the channel as public this will be ``true`` otherwise ``false``
 * ``cln_node_capacity_sat``: the total capacity of the peer in sats
@@ -109,8 +109,20 @@ Variables starting with ``cln_`` query your own gossip, ``amboss_`` the [Amboss]
 
 Example: ``their_funding_sat >= 1000000 && their_funding_sat <= 50000000 && (amboss_has_email==true || amboss_has_nostr==true)`` will accept channels that are between 1000000 and 50000000 sats in size and either have a email or nostr info on amboss
 
+# How to set options
+``clnrod`` is a dynamic plugin with dynamic options, so you can start it after CLN is already running and modify it's options after the plugin is started. You have two different methods of setting the options:
+
+1. When starting the plugin dynamically.
+
+* Example: ``lightning-cli -k plugin subcommand=start plugin=/path/to/clnrod clnrod-blockmode=allow``
+
+2. Permanently saving them in the CLN config file. :warning:If you want to do this while CLN is running you must use [setconfig](https://docs.corelightning.org/reference/lightning-setconfig) instead of manually editing your config file! :warning:If you have options in the config file (either by manually editing it or by using the ``setconfig`` command) make sure the plugin will start automatically with CLN (include ``plugin=/path/to/clnrod`` or have a symlink to ``clnrod`` in your ``plugins`` folder). This is because CLN will refuse to start with config options that don't have a corresponding plugin loaded. :warning:If you edit your config file manually while CLN is running and a line changes their line number CLN will crash when you use the [setconfig](https://docs.corelightning.org/reference/lightning-setconfig) command, so better stick to ``setconfig`` only during CLN's uptime!
+
+* Example: ``lightning-cli setconfig clnrod-blockmode allow``
+
+You can mix two methods and if you set the same option with different methods, it will pick the value from your most recently used method.
+
 # Options
-:warning:Only options in your config file(s) (network and general config file) will be used! *Not* the ones you can provide with the ``lightning-cli plugin start`` command! Use ``clnrod-reload`` to read the options while cln is running.
 ### general
 * ``clnrod-denymessage``: The custom message we will send to a rejected peer, default to none
 * ``clnrod-blockmode``: Set the preferred block mode to *allow* or *deny*, defaults to *deny* (with no config clnrod accepts all channels, see Documentation)

@@ -221,7 +221,7 @@ async fn get_gossip_data(
 }
 
 pub async fn collect_data(
-    plugin: Plugin<PluginState>,
+    plugin: &Plugin<PluginState>,
     pubkey: PublicKey,
     their_funding_msat: Amount,
     channel_flags: ChannelFlags,

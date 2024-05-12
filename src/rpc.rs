@@ -1,4 +1,4 @@
-use std::str::FromStr;
+use std::{path::Path, str::FromStr};
 
 use anyhow::{anyhow, Context, Error};
 use cln_plugin::Plugin;
@@ -7,18 +7,29 @@ use serde_json::json;
 
 use crate::{
     collect::collect_data,
-    config::read_config,
+    config::read_pubkey_list,
     notify::notify,
     parser::{evaluate_rule, parse_rule},
-    structs::{ChannelFlags, NotifyVerbosity, PluginState},
+    structs::{BlockMode, ChannelFlags, NotifyVerbosity, PluginState},
+    OPT_BLOCK_MODE, PLUGIN_NAME,
 };
 
 pub async fn clnrod_reload(
     plugin: Plugin<PluginState>,
     _args: serde_json::Value,
 ) -> Result<serde_json::Value, Error> {
+    let plugin_dir = Path::new(&plugin.configuration().lightning_dir).join(PLUGIN_NAME);
+    let block_mode = BlockMode::from_str(
+        plugin
+            .option_str(OPT_BLOCK_MODE)
+            .unwrap()
+            .unwrap()
+            .as_str()
+            .unwrap(),
+    )
+    .unwrap();
     let (removed, added) =
-        read_config(plugin.configuration().lightning_dir, plugin.state()).await?;
+        read_pubkey_list(plugin.state().pubkey_list.clone(), plugin_dir, block_mode).await?;
 
     Ok(json!({"removed":removed, "added":added}))
 }
@@ -55,7 +66,7 @@ pub async fn clnrod_testrule(
                     .as_str()
                     .ok_or_else(|| anyhow!("rule: not a valid string"))?;
                 let data = collect_data(
-                    plugin.clone(),
+                    &plugin,
                     pubkey,
                     Amount::from_msat(their_funding_msat),
                     ChannelFlags { public },

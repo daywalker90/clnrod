@@ -4,15 +4,14 @@ use std::{
     sync::Arc,
 };
 
-use anyhow::{anyhow, Error};
-use cln_rpc::primitives::PublicKey;
-use parking_lot::Mutex;
-use serde::{Deserialize, Serialize};
-
 use crate::{
     OPT_BLOCK_MODE, OPT_CUSTOM_RULE, OPT_DENY_MESSAGE, OPT_EMAIL_FROM, OPT_EMAIL_TO,
     OPT_NOTIFY_VERBOSITY, OPT_SMTP_PASSWORD, OPT_SMTP_PORT, OPT_SMTP_SERVER, OPT_SMTP_USERNAME,
 };
+use anyhow::{anyhow, Error};
+use cln_rpc::primitives::PublicKey;
+use parking_lot::Mutex;
+use serde::{Deserialize, Serialize};
 
 #[derive(Clone)]
 pub struct PluginState {
@@ -68,44 +67,44 @@ impl Config {
     pub fn new() -> Config {
         Config {
             deny_message: DynamicConfigOption {
-                name: OPT_DENY_MESSAGE.name,
+                name: OPT_DENY_MESSAGE,
                 value: String::new(),
             },
             block_mode: DynamicConfigOption {
-                name: OPT_BLOCK_MODE.name,
+                name: OPT_BLOCK_MODE,
                 value: BlockMode::Deny,
             },
             custom_rule: DynamicConfigOption {
-                name: OPT_CUSTOM_RULE.name,
+                name: OPT_CUSTOM_RULE,
                 value: String::new(),
             },
             smtp_username: DynamicConfigOption {
-                name: OPT_SMTP_USERNAME.name,
+                name: OPT_SMTP_USERNAME,
                 value: String::new(),
             },
             smtp_password: DynamicConfigOption {
-                name: OPT_SMTP_PASSWORD.name,
+                name: OPT_SMTP_PASSWORD,
                 value: String::new(),
             },
             smtp_server: DynamicConfigOption {
-                name: OPT_SMTP_SERVER.name,
+                name: OPT_SMTP_SERVER,
                 value: String::new(),
             },
             smtp_port: DynamicConfigOption {
-                name: OPT_SMTP_PORT.name,
+                name: OPT_SMTP_PORT,
                 value: 0,
             },
             email_from: DynamicConfigOption {
-                name: OPT_EMAIL_FROM.name,
+                name: OPT_EMAIL_FROM,
                 value: String::new(),
             },
             email_to: DynamicConfigOption {
-                name: OPT_EMAIL_TO.name,
+                name: OPT_EMAIL_TO,
                 value: String::new(),
             },
             send_mail: false,
             notify_verbosity: DynamicConfigOption {
-                name: OPT_NOTIFY_VERBOSITY.name,
+                name: OPT_NOTIFY_VERBOSITY,
                 value: NotifyVerbosity::All,
             },
         }

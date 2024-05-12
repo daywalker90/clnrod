@@ -124,7 +124,7 @@ async fn release_hook(
 
     let allowed_custom = if !list_matched && !config.custom_rule.value.is_empty() {
         let data = match collect_data(
-            plugin,
+            &plugin,
             pubkey,
             their_funding_msat,
             channel_flags,
