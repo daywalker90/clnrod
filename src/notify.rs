@@ -1,6 +1,8 @@
 use std::time::Duration;
 
 use anyhow::{anyhow, Error};
+use cln_plugin::Plugin;
+use cln_rpc::primitives::PublicKey;
 use lettre::{
     message::header::ContentType,
     transport::smtp::{
@@ -11,7 +13,7 @@ use lettre::{
 };
 use log::{info, warn};
 
-use crate::structs::{Config, NotifyVerbosity};
+use crate::structs::{Config, NotifyVerbosity, PluginState};
 
 async fn send_mail(
     config: &Config,
@@ -63,28 +65,41 @@ async fn send_mail(
 }
 
 pub async fn notify(
-    config: &Config,
+    plugin: &Plugin<PluginState>,
     subject: &str,
-    reason: &str,
-    pubkey: String,
+    body: &str,
+    pubkey: Option<PublicKey>,
     verbosity: NotifyVerbosity,
 ) {
-    if verbosity == NotifyVerbosity::Error {
-        warn!("{}: pubkey: {} reason: {}", subject, pubkey, reason);
+    let config = plugin.state().config.lock().clone();
+    let cache = if let Some(pk) = &pubkey {
+        plugin.state().peerdata_cache.lock().get(pk).cloned()
     } else {
-        info!("{}: pubkey: {} reason: {}", subject, pubkey, reason);
+        None
+    };
+    if verbosity == NotifyVerbosity::Error {
+        warn!("{}: pubkey: {:?} message: {}", subject, pubkey, body);
+    } else {
+        info!("{}: pubkey: {:?} message: {}", subject, pubkey, body);
     }
 
     if config.send_mail && config.notify_verbosity.value >= verbosity {
         if let Err(e) = send_mail(
-            config,
+            &config,
             &subject.to_string(),
-            &format!("pubkey:\n{}\n\nReason:\n{}", pubkey, reason),
+            &format!(
+                "pubkey:\n{}\n\nMessage:\n{}\n\nCollected data:\n{}",
+                pubkey
+                    .map(|pk| pk.to_string())
+                    .unwrap_or("None".to_string()),
+                body,
+                cache.map(|pd| pd.to_string()).unwrap_or("None".to_string())
+            ),
             false,
         )
         .await
         {
-            warn!("Error sending mail: {} pubkey: {}", e, pubkey);
+            warn!("Error sending mail: {} pubkey: {:?}", e, pubkey);
         };
     }
 }
