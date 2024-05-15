@@ -193,7 +193,12 @@ async fn get_gossip_data(
         their_funding_sat: their_funding_msat.msat() / 1_000,
         channel_flags,
         channel_count: Some(list_channels.len() as u64),
-        node_capacity_sat: Some(list_channels.iter().map(|c| c.amount_msat.msat()).sum()),
+        node_capacity_sat: Some(
+            list_channels
+                .iter()
+                .map(|c| c.amount_msat.msat() / 1000)
+                .sum(),
+        ),
         has_clearnet: Some(list_node.addresses.as_ref().map_or(false, |a| {
             a.iter().any(|t| {
                 t.item_type == ListnodesNodesAddressesType::DNS
