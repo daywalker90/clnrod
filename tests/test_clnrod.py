@@ -25,7 +25,7 @@ def test_testparse(node_factory, get_plugin):  # noqa: F811
         },
     )
     LOGGER.info(f"{result}")
-    assert result["parse_result"]
+    assert result["custom_rule_result"]
 
 
 def test_clnrod_custom_deny(node_factory, get_plugin):  # noqa: F811

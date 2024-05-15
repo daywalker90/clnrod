@@ -21,10 +21,10 @@ pub async fn openchannel_hook(
         Ok(parsed) => parsed,
         Err(e) => {
             notify(
-                &config,
+                &plugin,
                 "Clnrod channel rejected. V1 HOOK PARSING ERROR",
-                &format!("Error:\n{}", e),
-                format!("Hook input:\n{}", v),
+                &format!("Error:\n{}\nHook input:\n{}", e, v),
+                None,
                 NotifyVerbosity::Error,
             )
             .await;
@@ -70,10 +70,10 @@ pub async fn openchannel2_hook(
         Ok(parsed) => parsed,
         Err(e) => {
             notify(
-                &config,
+                &plugin,
                 "Clnrod channel rejected. V2 HOOK PARSING ERROR",
-                &format!("Error:\n{}", e),
-                format!("Hook input:\n{}", v),
+                &format!("Error:\n{}\nHook input:\n{}", e, v),
+                None,
                 NotifyVerbosity::Error,
             )
             .await;
@@ -135,10 +135,10 @@ async fn release_hook(
             Ok(da) => da,
             Err(e) => {
                 notify(
-                    &config,
+                    &plugin,
                     "Clnrod channel rejected. COLLECT_DATA ERROR",
                     &e.to_string(),
-                    pubkey.to_string(),
+                    Some(pubkey),
                     NotifyVerbosity::Error,
                 )
                 .await;
@@ -149,10 +149,10 @@ async fn release_hook(
             Ok(o) => Some(o),
             Err(e) => {
                 notify(
-                    &config,
+                    &plugin,
                     "Clnrod channel rejected. EVALUATE_RULE ERROR",
                     &e.to_string(),
-                    pubkey.to_string(),
+                    Some(pubkey),
                     NotifyVerbosity::Error,
                 )
                 .await;
@@ -167,10 +167,10 @@ async fn release_hook(
         BlockMode::Allow => {
             if list_matched {
                 notify(
-                    &config,
+                    &plugin,
                     "Clnrod channel accepted.",
                     "on allowlist",
-                    pubkey.to_string(),
+                    Some(pubkey),
                     NotifyVerbosity::Accepted,
                 )
                 .await;
@@ -178,20 +178,20 @@ async fn release_hook(
             } else if let Some(cu) = allowed_custom {
                 if cu {
                     notify(
-                        &config,
+                        &plugin,
                         "Clnrod channel accepted.",
                         "not on allowlist, but accepted by custom rule",
-                        pubkey.to_string(),
+                        Some(pubkey),
                         NotifyVerbosity::Accepted,
                     )
                     .await;
                     json!({"result":"continue"})
                 } else {
                     notify(
-                        &config,
+                        &plugin,
                         "Clnrod channel rejected.",
                         "not on allowlist and not accepted by custom rule",
-                        pubkey.to_string(),
+                        Some(pubkey),
                         NotifyVerbosity::All,
                     )
                     .await;
@@ -199,10 +199,10 @@ async fn release_hook(
                 }
             } else {
                 notify(
-                    &config,
+                    &plugin,
                     "Clnrod channel rejected.",
                     "Not on allowlist and no custom rule",
-                    pubkey.to_string(),
+                    Some(pubkey),
                     NotifyVerbosity::All,
                 )
                 .await;
@@ -212,10 +212,10 @@ async fn release_hook(
         BlockMode::Deny => {
             if list_matched {
                 notify(
-                    &config,
+                    &plugin,
                     "Clnrod channel rejected.",
                     "on denylist",
-                    pubkey.to_string(),
+                    Some(pubkey),
                     NotifyVerbosity::All,
                 )
                 .await;
@@ -223,20 +223,20 @@ async fn release_hook(
             } else if let Some(cu) = allowed_custom {
                 if cu {
                     notify(
-                        &config,
+                        &plugin,
                         "Clnrod channel accepted.",
                         "not on denylist and accepted by custom rule",
-                        pubkey.to_string(),
+                        Some(pubkey),
                         NotifyVerbosity::Accepted,
                     )
                     .await;
                     json!({"result":"continue"})
                 } else {
                     notify(
-                        &config,
+                        &plugin,
                         "Clnrod channel rejected.",
                         "not on denylist, but did not get accepted by custom rule",
-                        pubkey.to_string(),
+                        Some(pubkey),
                         NotifyVerbosity::All,
                     )
                     .await;
@@ -244,10 +244,10 @@ async fn release_hook(
                 }
             } else {
                 notify(
-                    &config,
+                    &plugin,
                     "Clnrod channel accepted.",
                     "not on denylist and no custom rule",
-                    pubkey.to_string(),
+                    Some(pubkey),
                     NotifyVerbosity::Accepted,
                 )
                 .await;

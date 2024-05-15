@@ -76,7 +76,20 @@ pub async fn clnrod_testrule(
                 .await?;
                 let parse_result = parse_rule(rule)?;
                 let evaluate_result = evaluate_rule(parse_result, &data)?;
-                Ok(json!({"parse_result":evaluate_result}))
+
+                let config = plugin.state().config.lock().clone();
+                if config.send_mail {
+                    notify(
+                        &plugin,
+                        "Clnrod TEST RULE",
+                        &format!("called clnrod-testrule, custom_rule_result: {evaluate_result}"),
+                        Some(pubkey),
+                        NotifyVerbosity::Error,
+                    )
+                    .await;
+                }
+
+                Ok(json!({"custom_rule_result":evaluate_result}))
             } else {
                 Err(anyhow!(
                     "Invalid input! Use command like this: lightning-cli clnrod-testparse \
@@ -98,10 +111,10 @@ pub async fn clnrod_testmail(
     let config = plugin.state().config.lock().clone();
     if config.send_mail {
         notify(
-            &config,
+            &plugin,
             "Clnrod TEST EMAIL",
             "called clnrod-testmail",
-            "FAKEKEY".to_string(),
+            None,
             NotifyVerbosity::Error,
         )
         .await;
