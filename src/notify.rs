@@ -78,9 +78,23 @@ pub async fn notify(
         None
     };
     if verbosity == NotifyVerbosity::Error {
-        warn!("{}: pubkey: {:?} message: {}", subject, pubkey, body);
+        warn!(
+            "{}: pubkey: {} message: {}",
+            subject,
+            pubkey
+                .map(|pk| pk.to_string())
+                .unwrap_or("None".to_string()),
+            body
+        );
     } else {
-        info!("{}: pubkey: {:?} message: {}", subject, pubkey, body);
+        info!(
+            "{}: pubkey: {} message: {}",
+            subject,
+            pubkey
+                .map(|pk| pk.to_string())
+                .unwrap_or("None".to_string()),
+            body
+        );
     }
 
     if config.send_mail && config.notify_verbosity.value >= verbosity {
