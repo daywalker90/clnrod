@@ -314,10 +314,10 @@ def test_options(node_factory, get_plugin):  # noqa: F811
         "their_funding_sat >= 1000000 && their_funding_sat <= 50000000 && (amboss_has_email==true || amboss_has_nostr==true)",
     )
 
-    with pytest.raises(RpcError, match="invalid digit found in string"):
+    with pytest.raises(RpcError, match="not a valid integer"):
         l1.rpc.setconfig("clnrod-smtp-port", "test")
     with pytest.raises(
-        RpcError, match="Error: Number needs to be >0 and <=65535"
+        RpcError, match="out of range integral type conversion attempted"
     ):
         l1.rpc.setconfig("clnrod-smtp-port", 99999)
     l1.rpc.setconfig("clnrod-smtp-port", 9999)
