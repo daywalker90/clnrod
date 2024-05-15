@@ -1,5 +1,6 @@
 use std::{
     collections::{HashMap, HashSet},
+    fmt::{self, Display, Formatter},
     str::FromStr,
     sync::Arc,
 };
@@ -11,7 +12,7 @@ use crate::{
 use anyhow::{anyhow, Error};
 use cln_rpc::primitives::PublicKey;
 use parking_lot::Mutex;
-use serde::{Deserialize, Serialize};
+use serde::{de::IntoDeserializer, Deserialize, Serialize};
 
 #[derive(Clone)]
 pub struct PluginState {
@@ -123,6 +124,84 @@ pub struct PeerDataCache {
     pub age: u64,
 }
 
+impl Display for PeerDataCache {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        let mut result = format!(
+            "their_funding_sat: {}\npublic: {}",
+            self.peer_data.peerinfo.their_funding_sat, self.peer_data.peerinfo.channel_flags.public
+        );
+        if let Some(c) = self.peer_data.peerinfo.node_capacity_sat {
+            result.push_str(&format!("\ncln_node_capacity_sat: {}", c))
+        }
+        if let Some(c) = self.peer_data.peerinfo.channel_count {
+            result.push_str(&format!("\ncln_channel_count: {}", c))
+        }
+        if let Some(c) = self.peer_data.peerinfo.has_clearnet {
+            result.push_str(&format!("\ncln_has_clearnet: {}", c))
+        }
+        if let Some(c) = self.peer_data.peerinfo.has_tor {
+            result.push_str(&format!("\ncln_has_tor: {}", c))
+        }
+        if let Some(c) = self.peer_data.peerinfo.anchor_support {
+            result.push_str(&format!("\ncln_anchor_support: {}", c))
+        }
+
+        if let Some(oneml_data) = &self.peer_data.oneml_data {
+            result.push_str(&format!("\noneml_capacity: {}", oneml_data.capacity));
+            result.push_str(&format!(
+                "\noneml_channelcount: {}",
+                oneml_data.channelcount
+            ));
+            result.push_str(&format!("\noneml_age: {}", oneml_data.age));
+            result.push_str(&format!("\noneml_growth: {}", oneml_data.growth));
+            result.push_str(&format!(
+                "\noneml_availability: {}",
+                oneml_data.availability
+            ));
+        }
+
+        if let Some(amboss_data) = &self.peer_data.amboss_data {
+            if let Some(amboss_metrics) = &amboss_data.get_node.graph_info.metrics {
+                result.push_str(&format!(
+                    "\namboss_capacity_rank: {}",
+                    amboss_metrics.capacity_rank
+                ));
+                result.push_str(&format!(
+                    "\namboss_channels_rank: {}",
+                    amboss_metrics.channels_rank
+                ));
+            }
+            if let Some(amboss_socials) = &amboss_data.get_node.socials.info {
+                if let Some(c) = &amboss_socials.email {
+                    result.push_str(&format!("\namboss_has_email: {}", c))
+                }
+                if let Some(c) = &amboss_socials.linkedin {
+                    result.push_str(&format!("\namboss_has_linkedin: {}", c))
+                }
+                if let Some(c) = &amboss_socials.nostr {
+                    result.push_str(&format!("\namboss_has_nostr: {}", c))
+                }
+                if let Some(c) = &amboss_socials.telegram {
+                    result.push_str(&format!("\namboss_has_telegram: {}", c))
+                }
+                if let Some(c) = &amboss_socials.twitter {
+                    result.push_str(&format!("\namboss_has_twitter: {}", c))
+                }
+                if let Some(c) = &amboss_socials.website {
+                    result.push_str(&format!("\namboss_has_website: {}", c))
+                }
+            }
+            if let Some(amboss_ll) = &amboss_data.get_node.socials.lightning_labs.terminal_web {
+                result.push_str(&format!(
+                    "\namboss_terminal_web_rank: {}",
+                    amboss_ll.position
+                ))
+            }
+        }
+        write!(f, "{}", result)
+    }
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct PeerData {
     pub peerinfo: PeerInfo,
@@ -193,11 +272,17 @@ pub struct AmbossSocials {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct AmbossSocialsInfo {
+    #[serde(deserialize_with = "empty_string_as_none")]
     pub email: Option<String>,
+    #[serde(deserialize_with = "empty_string_as_none")]
     pub linkedin: Option<String>,
+    #[serde(deserialize_with = "empty_string_as_none")]
     pub nostr: Option<String>,
+    #[serde(deserialize_with = "empty_string_as_none")]
     pub telegram: Option<String>,
+    #[serde(deserialize_with = "empty_string_as_none")]
     pub twitter: Option<String>,
+    #[serde(deserialize_with = "empty_string_as_none")]
     pub website: Option<String>,
 }
 
@@ -249,5 +334,18 @@ impl FromStr for NotifyVerbosity {
             "all" => Ok(NotifyVerbosity::All),
             _ => Err(anyhow!("could not parse NotifyVerbosity from {}", s)),
         }
+    }
+}
+
+fn empty_string_as_none<'de, D, T>(de: D) -> Result<Option<T>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+    T: serde::Deserialize<'de>,
+{
+    let opt = Option::<String>::deserialize(de)?;
+    let opt = opt.as_deref();
+    match opt {
+        None | Some("") => Ok(None),
+        Some(s) => T::deserialize(s.into_deserializer()).map(Some),
     }
 }
