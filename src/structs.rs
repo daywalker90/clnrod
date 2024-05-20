@@ -147,17 +147,21 @@ impl Display for PeerDataCache {
         }
 
         if let Some(oneml_data) = &self.peer_data.oneml_data {
-            result.push_str(&format!("\noneml_capacity: {}", oneml_data.capacity));
-            result.push_str(&format!(
-                "\noneml_channelcount: {}",
-                oneml_data.channelcount
-            ));
-            result.push_str(&format!("\noneml_age: {}", oneml_data.age));
-            result.push_str(&format!("\noneml_growth: {}", oneml_data.growth));
-            result.push_str(&format!(
-                "\noneml_availability: {}",
-                oneml_data.availability
-            ));
+            if let Some(capacity) = oneml_data.capacity {
+                result.push_str(&format!("\noneml_capacity: {}", capacity));
+            }
+            if let Some(channelcount) = oneml_data.channelcount {
+                result.push_str(&format!("\noneml_channelcount: {}", channelcount));
+            }
+            if let Some(age) = oneml_data.age {
+                result.push_str(&format!("\noneml_age: {}", age));
+            }
+            if let Some(growth) = oneml_data.growth {
+                result.push_str(&format!("\noneml_growth: {}", growth));
+            }
+            if let Some(availability) = oneml_data.availability {
+                result.push_str(&format!("\noneml_availability: {}", availability));
+            }
         }
 
         if let Some(amboss_data) = &self.peer_data.amboss_data {
@@ -228,11 +232,11 @@ pub struct ChannelFlags {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct OneMl {
-    pub capacity: u64,
-    pub channelcount: u64,
-    pub age: u64,
-    pub growth: u64,
-    pub availability: u64,
+    pub capacity: Option<u64>,
+    pub channelcount: Option<u64>,
+    pub age: Option<u64>,
+    pub growth: Option<u64>,
+    pub availability: Option<u64>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

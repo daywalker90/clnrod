@@ -150,41 +150,64 @@ fn evaluate_value(pair: &Pair<Rule>, variables: &PeerData) -> Result<u64, Error>
                     0
                 })
             }
-            p if p.eq_ignore_ascii_case("oneml_capacity") => {
-                Ok(variables.oneml_data.as_ref().unwrap().capacity)
-            }
-            p if p.eq_ignore_ascii_case("oneml_channelcount") => {
-                Ok(variables.oneml_data.as_ref().unwrap().channelcount)
-            }
-            p if p.eq_ignore_ascii_case("oneml_age") => {
-                Ok(variables.oneml_data.as_ref().unwrap().age)
-            }
-            p if p.eq_ignore_ascii_case("oneml_growth") => {
-                Ok(variables.oneml_data.as_ref().unwrap().growth)
-            }
-            p if p.eq_ignore_ascii_case("oneml_availability") => {
-                Ok(variables.oneml_data.as_ref().unwrap().availability)
-            }
-            p if p.eq_ignore_ascii_case("amboss_capacity_rank") => Ok(variables
-                .amboss_data
+            p if p.eq_ignore_ascii_case("oneml_capacity") => Ok(variables
+                .oneml_data
                 .as_ref()
                 .unwrap()
-                .get_node
-                .graph_info
-                .metrics
-                .as_ref()
-                .ok_or_else(|| anyhow!("amboss_capacity_rank: no metrics found"))?
-                .capacity_rank),
-            p if p.eq_ignore_ascii_case("amboss_channels_rank") => Ok(variables
-                .amboss_data
+                .capacity
+                .unwrap_or(u64::MAX)),
+            p if p.eq_ignore_ascii_case("oneml_channelcount") => Ok(variables
+                .oneml_data
                 .as_ref()
                 .unwrap()
-                .get_node
-                .graph_info
-                .metrics
+                .channelcount
+                .unwrap_or(u64::MAX)),
+            p if p.eq_ignore_ascii_case("oneml_age") => Ok(variables
+                .oneml_data
                 .as_ref()
-                .ok_or_else(|| anyhow!("amboss_channels_rank: no metrics found"))?
-                .channels_rank),
+                .unwrap()
+                .age
+                .unwrap_or(u64::MAX)),
+            p if p.eq_ignore_ascii_case("oneml_growth") => Ok(variables
+                .oneml_data
+                .as_ref()
+                .unwrap()
+                .growth
+                .unwrap_or(u64::MAX)),
+            p if p.eq_ignore_ascii_case("oneml_availability") => Ok(variables
+                .oneml_data
+                .as_ref()
+                .unwrap()
+                .availability
+                .unwrap_or(u64::MAX)),
+            p if p.eq_ignore_ascii_case("amboss_capacity_rank") => {
+                if let Some(metrics) = &variables
+                    .amboss_data
+                    .as_ref()
+                    .unwrap()
+                    .get_node
+                    .graph_info
+                    .metrics
+                {
+                    Ok(metrics.capacity_rank)
+                } else {
+                    Ok(u64::MAX)
+                }
+            }
+            p if p.eq_ignore_ascii_case("amboss_channels_rank") => {
+                if let Some(metrics) = &variables
+                    .amboss_data
+                    .as_ref()
+                    .unwrap()
+                    .get_node
+                    .graph_info
+                    .metrics
+                {
+                    Ok(metrics.channels_rank)
+                } else {
+                    Ok(u64::MAX)
+                }
+            }
             p if p.eq_ignore_ascii_case("amboss_has_email") => Ok(
                 if variables
                     .amboss_data
@@ -281,17 +304,21 @@ fn evaluate_value(pair: &Pair<Rule>, variables: &PeerData) -> Result<u64, Error>
                     0
                 },
             ),
-            p if p.eq_ignore_ascii_case("amboss_terminal_web_rank") => Ok(variables
-                .amboss_data
-                .as_ref()
-                .unwrap()
-                .get_node
-                .socials
-                .lightning_labs
-                .terminal_web
-                .as_ref()
-                .ok_or_else(|| anyhow!("amboss_terminal_web_rank: no metrics found"))?
-                .position),
+            p if p.eq_ignore_ascii_case("amboss_terminal_web_rank") => {
+                if let Some(term_web) = &variables
+                    .amboss_data
+                    .as_ref()
+                    .unwrap()
+                    .get_node
+                    .socials
+                    .lightning_labs
+                    .terminal_web
+                {
+                    Ok(term_web.position)
+                } else {
+                    Ok(u64::MAX)
+                }
+            }
             _ => Err(anyhow!("Invalid variable name: {}", pair.as_str())),
         },
         Rule::BOOLEAN => match pair.as_str() {
