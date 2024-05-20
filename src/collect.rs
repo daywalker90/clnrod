@@ -4,7 +4,7 @@ use std::{
     time::{Duration, SystemTime, UNIX_EPOCH},
 };
 
-use anyhow::{anyhow, Context, Error};
+use anyhow::{anyhow, Error};
 use cln_plugin::Plugin;
 use cln_rpc::{
     model::{
@@ -60,11 +60,18 @@ async fn get_oneml_data(
 
     if response.status().is_success() {
         let json: Value = response.json().await?;
-        let noderank = json
-            .get("noderank")
-            .context(format!("1ML: {} has no ranks!", pubkey))?;
-        let one_ml_ranks: OneMl = serde_json::from_value(noderank.clone())?;
-        Ok(one_ml_ranks)
+        if let Some(noderank) = json.get("noderank") {
+            let one_ml_ranks: OneMl = serde_json::from_value(noderank.clone())?;
+            Ok(one_ml_ranks)
+        } else {
+            Ok(OneMl {
+                capacity: None,
+                channelcount: None,
+                age: None,
+                growth: None,
+                availability: None,
+            })
+        }
     } else {
         Err(anyhow!(
             "1ML: bad API response, status:{}",
@@ -212,14 +219,11 @@ async fn get_gossip_data(
                     || t.item_type == ListnodesNodesAddressesType::TORV3
             })
         })),
-        anchor_support: Some(check_feature(
-            if let Some(features) = &list_node.features {
-                features
-            } else {
-                return Err(anyhow!("node has no features?!"));
-            },
-            vec![22, 23],
-        )?),
+        anchor_support: if let Some(features) = &list_node.features {
+            Some(check_feature(features, vec![22, 23])?)
+        } else {
+            Some(false)
+        },
     };
     debug!("gossip_data: done");
     Ok(peerinfo)
@@ -356,11 +360,15 @@ fn check_feature(hex: &str, check_bits: Vec<u16>) -> Result<bool, Error> {
     // debug!("binary: {:?}", bits);
     let mut result = false;
     for bit in check_bits {
-        if let Some(b) = bits.get(bits.len() - 1 - bit as usize) {
-            debug!("found bit {}: {}", bit, b);
-            result = result || *b;
-        } else {
-            return Err(anyhow!("bit not found"));
+        let index = bits.len().checked_sub(1 + bit as usize);
+        match index.and_then(|i| bits.get(i)) {
+            Some(&b) => {
+                debug!("found bit {}: {}", bit, b);
+                result = result || b;
+            }
+            None => {
+                return Ok(false);
+            }
         }
     }
     Ok(result)
