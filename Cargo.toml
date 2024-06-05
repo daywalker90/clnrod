@@ -1,6 +1,6 @@
 [package]
 name = "clnrod"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 
 
@@ -13,9 +13,9 @@ parking_lot = "0.12"
 pest = "2"
 pest_derive = "2"
 
-cln-rpc = "0.1.8"
+cln-rpc = "0.1.9"
 # cln-rpc = { path="../lightning/cln-rpc/", version = "^0.1" }
-cln-plugin = "0.1.8"
+cln-plugin = "0.1.9"
 # cln-plugin = { path="../lightning/plugins/", version = "^0.1" }
 
 reqwest = { version = "0.12", default-features = false, features = ["http2", "json","rustls-tls"] }
