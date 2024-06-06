@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.2.1] - 2024-06-06
+
+## Changed
+
+- `clnrod-denymessage` defaults to `CLNROD: Channel rejected by channel acceptor, sorry!` now, because an opener could mistake an empty message for lightning being broken.
+
 ## [0.2.0] - 2024-06-05
 
 ### Added

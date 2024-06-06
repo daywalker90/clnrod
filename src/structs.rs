@@ -69,7 +69,7 @@ impl Config {
         Config {
             deny_message: DynamicConfigOption {
                 name: OPT_DENY_MESSAGE,
-                value: String::new(),
+                value: "CLNROD: Channel rejected by channel acceptor, sorry!".to_string(),
             },
             block_mode: DynamicConfigOption {
                 name: OPT_BLOCK_MODE,
