@@ -5,10 +5,6 @@ use std::{
     sync::Arc,
 };
 
-use crate::{
-    OPT_BLOCK_MODE, OPT_CUSTOM_RULE, OPT_DENY_MESSAGE, OPT_EMAIL_FROM, OPT_EMAIL_TO,
-    OPT_NOTIFY_VERBOSITY, OPT_SMTP_PASSWORD, OPT_SMTP_PORT, OPT_SMTP_SERVER, OPT_SMTP_USERNAME,
-};
 use anyhow::{anyhow, Error};
 use cln_rpc::primitives::PublicKey;
 use parking_lot::Mutex;
@@ -52,70 +48,34 @@ impl FromStr for BlockMode {
 
 #[derive(Clone, Debug)]
 pub struct Config {
-    pub deny_message: DynamicConfigOption<String>,
-    pub block_mode: DynamicConfigOption<BlockMode>,
-    pub custom_rule: DynamicConfigOption<String>,
-    pub smtp_username: DynamicConfigOption<String>,
-    pub smtp_password: DynamicConfigOption<String>,
-    pub smtp_server: DynamicConfigOption<String>,
-    pub smtp_port: DynamicConfigOption<u16>,
-    pub email_from: DynamicConfigOption<String>,
-    pub email_to: DynamicConfigOption<String>,
+    pub deny_message: String,
+    pub block_mode: BlockMode,
+    pub custom_rule: String,
+    pub smtp_username: String,
+    pub smtp_password: String,
+    pub smtp_server: String,
+    pub smtp_port: u16,
+    pub email_from: String,
+    pub email_to: String,
     pub send_mail: bool,
-    pub notify_verbosity: DynamicConfigOption<NotifyVerbosity>,
+    pub notify_verbosity: NotifyVerbosity,
 }
 impl Config {
     pub fn new() -> Config {
         Config {
-            deny_message: DynamicConfigOption {
-                name: OPT_DENY_MESSAGE,
-                value: "CLNROD: Channel rejected by channel acceptor, sorry!".to_string(),
-            },
-            block_mode: DynamicConfigOption {
-                name: OPT_BLOCK_MODE,
-                value: BlockMode::Deny,
-            },
-            custom_rule: DynamicConfigOption {
-                name: OPT_CUSTOM_RULE,
-                value: String::new(),
-            },
-            smtp_username: DynamicConfigOption {
-                name: OPT_SMTP_USERNAME,
-                value: String::new(),
-            },
-            smtp_password: DynamicConfigOption {
-                name: OPT_SMTP_PASSWORD,
-                value: String::new(),
-            },
-            smtp_server: DynamicConfigOption {
-                name: OPT_SMTP_SERVER,
-                value: String::new(),
-            },
-            smtp_port: DynamicConfigOption {
-                name: OPT_SMTP_PORT,
-                value: 0,
-            },
-            email_from: DynamicConfigOption {
-                name: OPT_EMAIL_FROM,
-                value: String::new(),
-            },
-            email_to: DynamicConfigOption {
-                name: OPT_EMAIL_TO,
-                value: String::new(),
-            },
+            deny_message: "CLNROD: Channel rejected by channel acceptor, sorry!".to_string(),
+            block_mode: BlockMode::Deny,
+            custom_rule: String::new(),
+            smtp_username: String::new(),
+            smtp_password: String::new(),
+            smtp_server: String::new(),
+            smtp_port: 0,
+            email_from: String::new(),
+            email_to: String::new(),
             send_mail: false,
-            notify_verbosity: DynamicConfigOption {
-                name: OPT_NOTIFY_VERBOSITY,
-                value: NotifyVerbosity::All,
-            },
+            notify_verbosity: NotifyVerbosity::All,
         }
     }
-}
-
-#[derive(Clone, Debug)]
-pub struct DynamicConfigOption<T> {
-    pub name: &'static str,
-    pub value: T,
 }
 
 #[derive(Clone, Debug)]

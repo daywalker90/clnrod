@@ -130,31 +130,23 @@ fn get_startup_options(
 fn check_option(config: &mut Config, name: &str, value: &options::Value) -> Result<(), Error> {
     match name {
         n if n.eq(OPT_BLOCK_MODE) => {
-            config.block_mode.value = BlockMode::from_str(value.as_str().unwrap())?;
+            config.block_mode = BlockMode::from_str(value.as_str().unwrap())?;
         }
         n if n.eq(OPT_DENY_MESSAGE) => {
-            config.deny_message.value = value.as_str().unwrap().to_string();
+            config.deny_message = value.as_str().unwrap().to_string();
         }
         n if n.eq(OPT_CUSTOM_RULE) => {
             parse_rule(value.as_str().unwrap())?;
-            config.custom_rule.value = value.as_str().unwrap().to_string();
+            config.custom_rule = value.as_str().unwrap().to_string();
         }
-        n if n.eq(OPT_SMTP_USERNAME) => {
-            config.smtp_username.value = value.as_str().unwrap().to_string()
-        }
-        n if n.eq(OPT_SMTP_PASSWORD) => {
-            config.smtp_password.value = value.as_str().unwrap().to_string()
-        }
-        n if n.eq(OPT_SMTP_SERVER) => {
-            config.smtp_server.value = value.as_str().unwrap().to_string()
-        }
-        n if n.eq(OPT_SMTP_PORT) => {
-            config.smtp_port.value = u16::try_from(value.as_i64().unwrap())?
-        }
-        n if n.eq(OPT_EMAIL_FROM) => config.email_from.value = value.as_str().unwrap().to_string(),
-        n if n.eq(OPT_EMAIL_TO) => config.email_to.value = value.as_str().unwrap().to_string(),
+        n if n.eq(OPT_SMTP_USERNAME) => config.smtp_username = value.as_str().unwrap().to_string(),
+        n if n.eq(OPT_SMTP_PASSWORD) => config.smtp_password = value.as_str().unwrap().to_string(),
+        n if n.eq(OPT_SMTP_SERVER) => config.smtp_server = value.as_str().unwrap().to_string(),
+        n if n.eq(OPT_SMTP_PORT) => config.smtp_port = u16::try_from(value.as_i64().unwrap())?,
+        n if n.eq(OPT_EMAIL_FROM) => config.email_from = value.as_str().unwrap().to_string(),
+        n if n.eq(OPT_EMAIL_TO) => config.email_to = value.as_str().unwrap().to_string(),
         n if n.eq(OPT_NOTIFY_VERBOSITY) => {
-            config.notify_verbosity.value = NotifyVerbosity::from_str(value.as_str().unwrap())?;
+            config.notify_verbosity = NotifyVerbosity::from_str(value.as_str().unwrap())?;
         }
         _ => return Err(anyhow!("Unknown option: {}", name)),
     }
@@ -255,12 +247,12 @@ pub async fn setconfig_callback(
 }
 
 fn activate_mail(config: &mut Config) {
-    if !config.smtp_username.value.is_empty()
-        && !config.smtp_password.value.is_empty()
-        && !config.smtp_server.value.is_empty()
-        && config.smtp_port.value > 0
-        && !config.email_from.value.is_empty()
-        && !config.email_to.value.is_empty()
+    if !config.smtp_username.is_empty()
+        && !config.smtp_password.is_empty()
+        && !config.smtp_server.is_empty()
+        && config.smtp_port > 0
+        && !config.email_from.is_empty()
+        && !config.email_to.is_empty()
     {
         info!("Will try to send notifications via email");
         config.send_mail = true;
