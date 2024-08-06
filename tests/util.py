@@ -52,3 +52,16 @@ def update_config_file_option(lightning_dir, option_name, option_value):
 
     with open(lightning_dir + "/config", "w") as file:
         file.writelines(lines)
+
+
+def experimental_anchors_check(node_factory):
+    l1 = node_factory.get_node()
+    version = l1.rpc.getinfo()["version"]
+    if (
+        version.startswith("v23.11")
+        or version.startswith("v24.02")
+        or version.startswith("v24.05")
+    ):
+        True
+    else:
+        False

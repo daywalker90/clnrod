@@ -6,7 +6,7 @@ import pytest
 from pyln.client import RpcError
 from pyln.testing.fixtures import *  # noqa: F403
 from pyln.testing.utils import sync_blockheight, wait_for
-from util import get_plugin  # noqa: F401
+from util import experimental_anchors_check, get_plugin  # noqa: F401
 
 LOGGER = logging.getLogger(__name__)
 
@@ -71,23 +71,25 @@ def test_clnrod_custom_allow(node_factory, get_plugin):  # noqa: F811
         mindepth=1,
         announce=True,
     )
-    wait_for(
-        lambda: len(l1.rpc.listpeerchannels(l2.info["id"])["channels"]) > 0
-    )
+    wait_for(lambda: len(l1.rpc.listpeerchannels(l2.info["id"])["channels"]) > 0)
 
 
 def test_clnrod_custom_gossip(node_factory, bitcoind, get_plugin):  # noqa: F811
+    opts = [
+        {
+            "plugin": get_plugin,
+            "clnrod-customrule": "public==true && their_funding_sat>100000",
+            "clnrod-denymessage": "No thanks",
+        },
+        {},
+    ]
+    if experimental_anchors_check(node_factory):
+        opts[0]["experimental-anchors"] = None
+        opts[1]["experimental-anchors"] = None
+
     l1, l2 = node_factory.get_nodes(
         2,
-        opts=[
-            {
-                "plugin": get_plugin,
-                "experimental-anchors": None,
-                "clnrod-customrule": "public==true && their_funding_sat>100000",
-                "clnrod-denymessage": "No thanks",
-            },
-            {"experimental-anchors": None},
-        ],
+        opts,
     )
 
     l2.fundwallet(10_000_000)
@@ -100,9 +102,7 @@ def test_clnrod_custom_gossip(node_factory, bitcoind, get_plugin):  # noqa: F811
     bitcoind.generate_block(6)
     sync_blockheight(bitcoind, [l1, l2])
 
-    wait_for(
-        lambda: len(l1.rpc.listpeerchannels(l2.info["id"])["channels"]) > 0
-    )
+    wait_for(lambda: len(l1.rpc.listpeerchannels(l2.info["id"])["channels"]) > 0)
 
     l1.rpc.setconfig(
         "clnrod-customrule",
@@ -110,12 +110,9 @@ def test_clnrod_custom_gossip(node_factory, bitcoind, get_plugin):  # noqa: F811
     )
     l1.rpc.call("clnrod-reload")
 
+    wait_for(lambda: len(l1.rpc.call("listnodes", [l2.info["id"]])["nodes"]) > 0)
     wait_for(
-        lambda: len(l1.rpc.call("listnodes", [l2.info["id"]])["nodes"]) > 0
-    )
-    wait_for(
-        lambda: "features"
-        in l1.rpc.call("listnodes", [l2.info["id"]])["nodes"][0]
+        lambda: "features" in l1.rpc.call("listnodes", [l2.info["id"]])["nodes"][0]
     )
 
     l2.rpc.fundchannel(
@@ -127,21 +124,23 @@ def test_clnrod_custom_gossip(node_factory, bitcoind, get_plugin):  # noqa: F811
 
 
 def test_clnrod_custom_gossip_v2(node_factory, bitcoind, get_plugin):  # noqa: F811
+    opts = [
+        {
+            "plugin": get_plugin,
+            "experimental-dual-fund": None,
+            "clnrod-customrule": "public==true && their_funding_sat>100000",
+            "clnrod-denymessage": "No thanks",
+        },
+        {
+            "experimental-dual-fund": None,
+        },
+    ]
+    if experimental_anchors_check(node_factory):
+        opts[0]["experimental-anchors"] = None
+        opts[1]["experimental-anchors"] = None
     l1, l2 = node_factory.get_nodes(
         2,
-        opts=[
-            {
-                "plugin": get_plugin,
-                "experimental-dual-fund": None,
-                "experimental-anchors": None,
-                "clnrod-customrule": "public==true && their_funding_sat>100000",
-                "clnrod-denymessage": "No thanks",
-            },
-            {
-                "experimental-dual-fund": None,
-                "experimental-anchors": None,
-            },
-        ],
+        opts,
     )
 
     l2.fundwallet(10_000_000)
@@ -154,21 +153,16 @@ def test_clnrod_custom_gossip_v2(node_factory, bitcoind, get_plugin):  # noqa: F
     bitcoind.generate_block(6)
     sync_blockheight(bitcoind, [l1, l2])
 
-    wait_for(
-        lambda: len(l1.rpc.listpeerchannels(l2.info["id"])["channels"]) > 0
-    )
+    wait_for(lambda: len(l1.rpc.listpeerchannels(l2.info["id"])["channels"]) > 0)
 
     l1.rpc.setconfig(
         "clnrod-customrule",
         "public==true && their_funding_sat>100000 && cln_anchor_support==true && cln_has_tor==false && cln_channel_count>=1 && cln_node_capacity_sat>500000",
     )
 
+    wait_for(lambda: len(l1.rpc.call("listnodes", [l2.info["id"]])["nodes"]) > 0)
     wait_for(
-        lambda: len(l1.rpc.call("listnodes", [l2.info["id"]])["nodes"]) > 0
-    )
-    wait_for(
-        lambda: "features"
-        in l1.rpc.call("listnodes", [l2.info["id"]])["nodes"][0]
+        lambda: "features" in l1.rpc.call("listnodes", [l2.info["id"]])["nodes"][0]
     )
 
     l2.rpc.fundchannel(
@@ -221,9 +215,7 @@ def test_clnrod_allowlist(node_factory, get_plugin):  # noqa: F811
         mindepth=1,
         announce=True,
     )
-    wait_for(
-        lambda: len(l1.rpc.listpeerchannels(l2.info["id"])["channels"]) > 0
-    )
+    wait_for(lambda: len(l1.rpc.listpeerchannels(l2.info["id"])["channels"]) > 0)
 
 
 def test_clnrod_denylist(node_factory, bitcoind, get_plugin):  # noqa: F811
@@ -262,9 +254,7 @@ def test_clnrod_denylist(node_factory, bitcoind, get_plugin):  # noqa: F811
     bitcoind.generate_block(6)
     sync_blockheight(bitcoind, [l1, l2])
 
-    wait_for(
-        lambda: len(l1.rpc.listpeerchannels(l2.info["id"])["channels"]) == 2
-    )
+    wait_for(lambda: len(l1.rpc.listpeerchannels(l2.info["id"])["channels"]) == 2)
 
     l1.rpc.call("clnrod-reload")
 
@@ -282,9 +272,9 @@ def test_options(node_factory, get_plugin):  # noqa: F811
 
     l1.rpc.setconfig("clnrod-denymessage", "test")
     assert (
-        l1.rpc.listconfigs("clnrod-denymessage")["configs"][
-            "clnrod-denymessage"
-        ]["value_str"]
+        l1.rpc.listconfigs("clnrod-denymessage")["configs"]["clnrod-denymessage"][
+            "value_str"
+        ]
         == "test"
     )
 
