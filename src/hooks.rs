@@ -122,13 +122,13 @@ async fn release_hook(
     let list_matched = pubkey_list.contains(&pubkey);
     debug!("release_hook: start, {}", list_matched);
 
-    let allowed_custom = if !list_matched && !config.custom_rule.value.is_empty() {
+    let allowed_custom = if !list_matched && !config.custom_rule.is_empty() {
         let data = match collect_data(
             &plugin,
             pubkey,
             their_funding_msat,
             channel_flags,
-            &config.custom_rule.value,
+            &config.custom_rule,
         )
         .await
         {
@@ -145,7 +145,7 @@ async fn release_hook(
                 return create_reject_response(&config);
             }
         };
-        match evaluate_rule(parse_rule(&config.custom_rule.value).unwrap(), &data) {
+        match evaluate_rule(parse_rule(&config.custom_rule).unwrap(), &data) {
             Ok(o) => Some(o),
             Err(e) => {
                 notify(
@@ -163,7 +163,7 @@ async fn release_hook(
         None
     };
     debug!("release_hook: done, {} {:?}", list_matched, allowed_custom);
-    match config.block_mode.value {
+    match config.block_mode {
         BlockMode::Allow => {
             if list_matched {
                 notify(
@@ -264,9 +264,9 @@ fn parse_channel_flags(channel_flags: u64) -> Result<ChannelFlags, Error> {
 }
 
 fn create_reject_response(config: &Config) -> serde_json::Value {
-    if config.deny_message.value.is_empty() {
+    if config.deny_message.is_empty() {
         json!({"result": "reject"})
     } else {
-        json!({"result": "reject", "error_message": config.deny_message.value})
+        json!({"result": "reject", "error_message": config.deny_message})
     }
 }
