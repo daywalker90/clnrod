@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.3.0] - 2024-09-23
+
+## Changed
+- updated dependencies to fix dependabot alert for ``quinn-proto``
+
 ## [0.2.1] - 2024-06-06
 
 ### Changed
