@@ -2,6 +2,10 @@
 
 ## [0.3.0] - 2024-09-23
 
+### Added
+
+- nix flake (thanks to @RCasatta)
+
 ### Changed
 - updated dependencies to fix dependabot alert for ``quinn-proto``
 
