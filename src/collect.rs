@@ -73,6 +73,7 @@ async fn get_oneml_data(
             })
         }
     } else {
+        debug!("oneml_data: bad API response, status:{}", response.status());
         Err(anyhow!(
             "1ML: bad API response, status:{}",
             response.status()
@@ -319,12 +320,14 @@ pub async fn collect_data(
     } else {
         None
     };
+    debug!("collect_data: amboss_data: {:?}", amboss_data);
 
     let oneml_data = if let Some(ml) = oneml_task {
         Some(ml.await??)
     } else {
         None
     };
+    debug!("collect_data: oneml_data: {:?}", oneml_data);
 
     let peer_data = PeerData {
         peerinfo,

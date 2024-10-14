@@ -8,7 +8,10 @@ use std::{
 use anyhow::{anyhow, Error};
 use cln_rpc::primitives::PublicKey;
 use parking_lot::Mutex;
+use pest::pratt_parser::{Assoc, Op, PrattParser};
 use serde::{de::IntoDeserializer, Deserialize, Serialize};
+
+use crate::Rule;
 
 #[derive(Clone)]
 pub struct PluginState {
@@ -42,6 +45,19 @@ impl FromStr for BlockMode {
             "allow" => Ok(BlockMode::Allow),
             "deny" => Ok(BlockMode::Deny),
             _ => Err(anyhow!("could not parse BlockMode from {}", s)),
+        }
+    }
+}
+
+pub struct ClnrodParser {
+    pub pratt_parser: PrattParser<Rule>,
+}
+impl ClnrodParser {
+    pub fn new() -> ClnrodParser {
+        ClnrodParser {
+            pratt_parser: PrattParser::new()
+                .op(Op::infix(Rule::or, Assoc::Left))
+                .op(Op::infix(Rule::and, Assoc::Left)),
         }
     }
 }
@@ -107,21 +123,26 @@ impl Display for PeerDataCache {
         }
 
         if let Some(oneml_data) = &self.peer_data.oneml_data {
-            if let Some(capacity) = oneml_data.capacity {
-                result.push_str(&format!("\noneml_capacity: {}", capacity));
-            }
-            if let Some(channelcount) = oneml_data.channelcount {
-                result.push_str(&format!("\noneml_channelcount: {}", channelcount));
-            }
-            if let Some(age) = oneml_data.age {
-                result.push_str(&format!("\noneml_age: {}", age));
-            }
-            if let Some(growth) = oneml_data.growth {
-                result.push_str(&format!("\noneml_growth: {}", growth));
-            }
-            if let Some(availability) = oneml_data.availability {
-                result.push_str(&format!("\noneml_availability: {}", availability));
-            }
+            result.push_str(&format!(
+                "\noneml_capacity: {}",
+                oneml_data.capacity.unwrap_or(u64::MAX)
+            ));
+            result.push_str(&format!(
+                "\noneml_channelcount: {}",
+                oneml_data.channelcount.unwrap_or(u64::MAX)
+            ));
+            result.push_str(&format!(
+                "\noneml_age: {}",
+                oneml_data.age.unwrap_or(u64::MAX)
+            ));
+            result.push_str(&format!(
+                "\noneml_growth: {}",
+                oneml_data.growth.unwrap_or(u64::MAX)
+            ));
+            result.push_str(&format!(
+                "\noneml_availability: {}",
+                oneml_data.availability.unwrap_or(u64::MAX)
+            ));
         }
 
         if let Some(amboss_data) = &self.peer_data.amboss_data {
@@ -134,6 +155,8 @@ impl Display for PeerDataCache {
                     "\namboss_channels_rank: {}",
                     amboss_metrics.channels_rank
                 ));
+            } else {
+                result.push_str("\namboss_capacity_rank: None\namboss_channels_rank: None");
             }
             if let Some(amboss_socials) = &amboss_data.get_node.socials.info {
                 if let Some(c) = &amboss_socials.email {
@@ -154,12 +177,19 @@ impl Display for PeerDataCache {
                 if let Some(c) = &amboss_socials.website {
                     result.push_str(&format!("\namboss_has_website: {}", c))
                 }
+            } else {
+                result.push_str("\nNo socials found on amboss.");
             }
             if let Some(amboss_ll) = &amboss_data.get_node.socials.lightning_labs.terminal_web {
                 result.push_str(&format!(
                     "\namboss_terminal_web_rank: {}",
                     amboss_ll.position
                 ))
+            } else {
+                result.push_str("\nNo Terminal Web data found on amboss.");
+            }
+            if !result.contains("amboss_") {
+                result.push_str("\nAmboss does not have any data for this node!");
             }
         }
         write!(f, "{}", result)

@@ -5,8 +5,19 @@ value = { INTEGER | BOOLEAN }
 INTEGER = @{ ASCII_DIGIT+ }
 BOOLEAN = @{ ^"true" | ^"false" }
 
-expression = _{ or_expr }
-or_expr = { and_expr ~ ("||" ~ and_expr)* }
-and_expr = { comparison_expr ~ ("&&" ~ comparison_expr)* }
-comparison_expr = { (VARIABLE ~ comparison_operator ~ value) | ("(" ~ expression ~ ")") }
-comparison_operator = { "==" | "!=" | ">=" | "<=" | ">" | "<" }
+rule = _{ SOI ~ expr ~ EOI}
+
+expr = { comparison_expr ~ (bool_op ~ comparison_expr)* }
+
+bool_op = _{ and | or }
+and = { "&&" }
+or = { "||" }
+
+comparison_expr = { (VARIABLE ~ comparison_operator ~ value) | ("(" ~ expr ~ ")") }
+comparison_operator = _{ equal | unequal | gte | lte | greater | lesser}
+equal = { "==" }
+unequal = { "!=" }
+gte = { ">=" }
+lte = { "<=" }
+greater = { ">" }
+lesser = { "<" }

@@ -10,7 +10,7 @@ use crate::{
     config::read_pubkey_list,
     notify::notify,
     parser::{evaluate_rule, parse_rule},
-    structs::{BlockMode, ChannelFlags, NotifyVerbosity, PluginState},
+    structs::{BlockMode, ChannelFlags, ClnrodParser, NotifyVerbosity, PluginState},
     OPT_BLOCK_MODE, PLUGIN_NAME,
 };
 
@@ -75,21 +75,30 @@ pub async fn clnrod_testrule(
                 )
                 .await?;
                 let parse_result = parse_rule(rule)?;
-                let evaluate_result = evaluate_rule(parse_result, &data)?;
+                let parser = ClnrodParser::new();
+                let (evaluate_result, reject_reason) = evaluate_rule(&parser, parse_result, &data)?;
+                let reject_reason = if let Some(rej_res) = reject_reason {
+                    rej_res
+                } else {
+                    "None".to_string()
+                };
 
                 let config = plugin.state().config.lock().clone();
                 if config.send_mail {
                     notify(
                         &plugin,
                         "Clnrod TEST RULE",
-                        &format!("called clnrod-testrule, custom_rule_result: {evaluate_result}"),
+                        &format!(
+                            "Called clnrod-testrule, custom_rule_result: {evaluate_result}. \
+                        Offending comparisons: {reject_reason}"
+                        ),
                         Some(pubkey),
                         NotifyVerbosity::Error,
                     )
                     .await;
                 }
 
-                Ok(json!({"custom_rule_result":evaluate_result}))
+                Ok(json!({"custom_rule_result":evaluate_result, "reject_reason":reject_reason}))
             } else {
                 Err(anyhow!(
                     "Invalid input! Use command like this: lightning-cli clnrod-testparse \

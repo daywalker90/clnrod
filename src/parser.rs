@@ -9,22 +9,26 @@ use pest::{
 #[cfg(test)]
 use std::{println as warn, println as debug}; // Workaround to use prinltn! for logging in tests.
 
-use crate::{structs::PeerData, Rule, RulesParser};
+use crate::{
+    structs::{ClnrodParser, PeerData},
+    Rule, RulesParser,
+};
 
 pub fn parse_rule(rule: &str) -> Result<Pairs<Rule>, Error> {
-    match RulesParser::parse(Rule::expression, rule) {
-        Ok(pairs) => {
+    match RulesParser::parse(Rule::rule, rule) {
+        Ok(mut pairs) => {
             if pairs.as_str() != rule {
                 warn!(
                     "Rule invalid! Issue is somewhere here: {}",
                     rule.replace(pairs.as_str(), ""),
                 );
+                debug!("rule:{} pairs:{}", rule, pairs.as_str());
                 return Err(anyhow!(
                     "Rule invalid! Issue is somewhere here: {}",
                     rule.replace(pairs.as_str(), ""),
                 ));
             }
-            Ok(pairs)
+            Ok(pairs.next().unwrap().into_inner())
         }
         Err(e) => {
             warn!("Error parsing custom_rule: {}", e);
@@ -33,79 +37,107 @@ pub fn parse_rule(rule: &str) -> Result<Pairs<Rule>, Error> {
     }
 }
 
-pub fn evaluate_rule(rule: Pairs<Rule>, variables: &PeerData) -> Result<bool, Error> {
-    for pair in rule {
-        debug!("parseCond: {}", pair.as_str());
-        if !evaluate_expression(pair, variables)? {
-            debug!("parseCond: false");
-            return Ok(false);
-        }
-    }
-    debug!("parseCond: true");
-    Ok(true)
-}
+pub fn evaluate_rule(
+    parser: &ClnrodParser,
+    rule: Pairs<Rule>,
+    variables: &PeerData,
+) -> Result<(bool, Option<String>), Error> {
+    parser
+        .pratt_parser
+        .map_primary(|primary| match primary.as_rule() {
+            Rule::comparison_expr => {
+                let mut inner_pairs = primary.into_inner();
+                debug!(
+                    "parseCOMP: {} LEN: {}",
+                    inner_pairs.as_str(),
+                    inner_pairs.len()
+                );
+                if inner_pairs.len() == 1 {
+                    // brackets detected
+                    Ok(evaluate_rule(parser, inner_pairs, variables)?)
+                } else {
+                    let left = inner_pairs.next().unwrap();
+                    let operator = inner_pairs.next().unwrap();
+                    let right = inner_pairs.next().unwrap();
+                    Ok(evaluate_comparison(left, right, operator, variables)?)
+                }
+            }
+            Rule::expr => Ok(evaluate_rule(parser, primary.into_inner(), variables)?),
+            other => Err(anyhow!(
+                "Expected a comparison expression, got instead: `{:?}`",
+                other
+            )),
+        })
+        .map_infix(|lhs, op, rhs| match op.as_rule() {
+            Rule::or => {
+                let (lres, lreas) = lhs?;
+                let (rres, rreas) = rhs?;
+                let result = lres || rres;
 
-fn evaluate_expression(pair: Pair<Rule>, _variables: &PeerData) -> Result<bool, Error> {
-    match pair.as_rule() {
-        Rule::and_expr => {
-            let mut result = true;
-            for inner_pair in pair.into_inner() {
-                debug!("parseAND: {}", inner_pair.as_str());
-                result = result && evaluate_expression(inner_pair, _variables)?;
-                debug!("parseAND: {}", result);
+                if result {
+                    Ok((result, None))
+                } else {
+                    Ok((
+                        result,
+                        Some(format!("{}, {}", lreas.unwrap(), rreas.unwrap())),
+                    ))
+                }
             }
-            Ok(result)
-        }
-        Rule::or_expr => {
-            let mut result = false;
-            for inner_pair in pair.into_inner() {
-                debug!("parseOR: {}", inner_pair.as_str());
-                result = result || evaluate_expression(inner_pair, _variables)?;
-                debug!("parseOR: {}", result);
+            Rule::and => {
+                let (lres, lreas) = lhs?;
+                let (rres, rreas) = rhs?;
+                let result = lres && rres;
+                if result {
+                    Ok((result, None))
+                } else if !lres && !rres {
+                    Ok((
+                        result,
+                        Some(format!("{}, {}", lreas.unwrap(), rreas.unwrap())),
+                    ))
+                } else if !lres && rres {
+                    Ok((result, Some(lreas.unwrap())))
+                } else {
+                    Ok((result, Some(rreas.unwrap())))
+                }
             }
-            Ok(result)
-        }
-        Rule::comparison_expr => {
-            let mut inner_pairs = pair.into_inner();
-            debug!(
-                "parseCOMP: {} LEN: {}",
-                inner_pairs.as_str(),
-                inner_pairs.len()
-            );
-            if inner_pairs.len() == 1 {
-                // brackets detected
-                Ok(evaluate_rule(inner_pairs, _variables)?)
-            } else {
-                let left = inner_pairs.next().unwrap();
-                let operator = inner_pairs.next().unwrap().as_str();
-                let right = inner_pairs.next().unwrap();
-                Ok(evaluate_comparison(left, right, operator, _variables)?)
-            }
-        }
-        e => {
-            warn!("parseERR: {}, {:?}", pair, e);
-            Err(anyhow!("parseERR: {}, {:?}", pair, e))
-        }
-    }
+            other => Err(anyhow!(
+                "Unexpected boolean operator, got instead: `{:?}`",
+                other
+            )),
+        })
+        .parse(rule)
 }
 
 fn evaluate_comparison(
     left: Pair<Rule>,
     right: Pair<Rule>,
-    operator: &str,
+    operator: Pair<Rule>,
     variables: &PeerData,
-) -> Result<bool, Error> {
+) -> Result<(bool, Option<String>), Error> {
     let left_value = evaluate_value(&left, variables)?;
     let right_value = evaluate_value(&right, variables)?;
-    debug!("COMP: {} {} {}", left_value, operator, right_value);
-    match operator {
-        "==" => Ok(left_value == right_value),
-        "!=" => Ok(left_value != right_value),
-        ">" => Ok(left_value > right_value),
-        "<" => Ok(left_value < right_value),
-        ">=" => Ok(left_value >= right_value),
-        "<=" => Ok(left_value <= right_value),
-        e => Err(anyhow!("unknown comparison operator: {}", e)),
+
+    let result = match operator.as_rule() {
+        Rule::equal => left_value == right_value,
+        Rule::unequal => left_value != right_value,
+        Rule::greater => left_value > right_value,
+        Rule::lesser => left_value < right_value,
+        Rule::gte => left_value >= right_value,
+        Rule::lte => left_value <= right_value,
+        e => return Err(anyhow!("unknown comparison operator: {:?}", e)),
+    };
+
+    let rej_match = format!("{} {} {}", left.as_str(), operator.as_str(), right_value);
+
+    debug!("Compared: {} Result: {}", rej_match, result);
+
+    if result {
+        Ok((result, None))
+    } else {
+        Ok((
+            result,
+            Some(format!("{} -> actual: {}", rej_match, left_value)),
+        ))
     }
 }
 
