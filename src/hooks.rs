@@ -4,7 +4,7 @@ use crate::{
     collect::collect_data,
     notify::notify,
     parser::{evaluate_rule, parse_rule},
-    structs::{BlockMode, ChannelFlags, Config, NotifyVerbosity, PluginState},
+    structs::{BlockMode, ChannelFlags, ClnrodParser, Config, NotifyVerbosity, PluginState},
 };
 use anyhow::{anyhow, Error};
 use cln_plugin::Plugin;
@@ -145,7 +145,8 @@ async fn release_hook(
                 return create_reject_response(&config);
             }
         };
-        match evaluate_rule(parse_rule(&config.custom_rule).unwrap(), &data) {
+        let parser = ClnrodParser::new();
+        match evaluate_rule(&parser, parse_rule(&config.custom_rule).unwrap(), &data) {
             Ok(o) => Some(o),
             Err(e) => {
                 notify(
@@ -169,28 +170,37 @@ async fn release_hook(
                 notify(
                     &plugin,
                     "Clnrod channel accepted.",
-                    "on allowlist",
+                    "On allowlist",
                     Some(pubkey),
                     NotifyVerbosity::Accepted,
                 )
                 .await;
                 json!({"result":"continue"})
             } else if let Some(cu) = allowed_custom {
-                if cu {
+                if cu.0 {
                     notify(
                         &plugin,
                         "Clnrod channel accepted.",
-                        "not on allowlist, but accepted by custom rule",
+                        "Not on allowlist, but accepted by custom rule",
                         Some(pubkey),
                         NotifyVerbosity::Accepted,
                     )
                     .await;
                     json!({"result":"continue"})
                 } else {
+                    let reject_reason = if let Some(rej_res) = cu.1 {
+                        rej_res
+                    } else {
+                        "Reject reason not found".to_string()
+                    };
                     notify(
                         &plugin,
                         "Clnrod channel rejected.",
-                        "not on allowlist and not accepted by custom rule",
+                        &format!(
+                            "Not on allowlist and not accepted by custom rule. \
+                        Offending comparisons: `{}`",
+                            reject_reason
+                        ),
                         Some(pubkey),
                         NotifyVerbosity::All,
                     )
@@ -214,28 +224,37 @@ async fn release_hook(
                 notify(
                     &plugin,
                     "Clnrod channel rejected.",
-                    "on denylist",
+                    "On denylist",
                     Some(pubkey),
                     NotifyVerbosity::All,
                 )
                 .await;
                 create_reject_response(&config)
             } else if let Some(cu) = allowed_custom {
-                if cu {
+                if cu.0 {
                     notify(
                         &plugin,
                         "Clnrod channel accepted.",
-                        "not on denylist and accepted by custom rule",
+                        "Not on denylist and accepted by custom rule",
                         Some(pubkey),
                         NotifyVerbosity::Accepted,
                     )
                     .await;
                     json!({"result":"continue"})
                 } else {
+                    let reject_reason = if let Some(rej_res) = cu.1 {
+                        rej_res
+                    } else {
+                        "Reject reason not found".to_string()
+                    };
                     notify(
                         &plugin,
                         "Clnrod channel rejected.",
-                        "not on denylist, but did not get accepted by custom rule",
+                        &format!(
+                            "Not on denylist, but did not get accepted by custom rule. \
+                        Offending comparisons: `{}`",
+                            reject_reason
+                        ),
                         Some(pubkey),
                         NotifyVerbosity::All,
                     )

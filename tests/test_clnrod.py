@@ -18,7 +18,7 @@ def test_testparse(node_factory, get_plugin):  # noqa: F811
     result = l1.rpc.call(
         "clnrod-testrule",
         {
-            "rule": "public==true && their_funding_sat>100000 && cln_channel_count>=1",
+            "rule": "public ==true && their_funding_sat>100000 && cln_channel_count>=1",
             "pubkey": l2.info["id"],
             "their_funding_sat": 200000,
             "public": True,
@@ -28,20 +28,27 @@ def test_testparse(node_factory, get_plugin):  # noqa: F811
     assert result["custom_rule_result"]
 
 
-def test_clnrod_custom_deny(node_factory, get_plugin):  # noqa: F811
-    l1, l2 = node_factory.get_nodes(
-        2,
+def test_clnrod_custom_rule(node_factory, bitcoind, get_plugin):  # noqa: F811
+    l1, l2, l3 = node_factory.get_nodes(
+        3,
         opts=[
             {
                 "plugin": get_plugin,
-                "clnrod-customrule": "public==true && their_funding_sat>100000 && cln_channel_count>=1",
+                "clnrod-customrule": "public == true && their_funding_sat>100000 && cln_channel_count>=1",
                 "clnrod-denymessage": "No thanks",
             },
+            {},
             {},
         ],
     )
 
     l2.fundwallet(10_000_000)
+    chan = l2.rpc.fundchannel(l3.info["id"] + "@localhost:" + str(l3.port), 50_000)
+    bitcoind.generate_block(6, wait_for_mempool=chan["txid"])
+    wait_for(lambda: len(l2.rpc.listchannels()["channels"]) == 2)
+    l2.rpc.connect(l1.info["id"], "localhost", l1.port)
+    wait_for(lambda: len(l1.rpc.listchannels()["channels"]) == 2)
+
     with pytest.raises(RpcError, match="No thanks"):
         l2.rpc.fundchannel(
             l1.info["id"] + "@localhost:" + str(l1.port),
@@ -49,6 +56,115 @@ def test_clnrod_custom_deny(node_factory, get_plugin):  # noqa: F811
             mindepth=1,
             announce=False,
         )
+    assert l1.daemon.is_in_log("Offending comparisons: `public == 1 -> actual: 0`")
+
+    rule2 = l1.rpc.call(
+        "clnrod-testrule",
+        {
+            "public": True,
+            "pubkey": l2.info["id"],
+            "their_funding_sat": 150_000,
+            "rule": "public==true && their_funding_sat>100000 && cln_channel_count>=1",
+        },
+    )
+    assert rule2["reject_reason"] == "None"
+
+    rule3 = l1.rpc.call(
+        "clnrod-testrule",
+        {
+            "public": True,
+            "pubkey": l2.info["id"],
+            "their_funding_sat": 50_000,
+            "rule": "public==true && their_funding_sat>100000 && cln_channel_count>=1",
+        },
+    )
+    assert rule3["reject_reason"] == "their_funding_sat > 100000 -> actual: 50000"
+
+    rule3 = l1.rpc.call(
+        "clnrod-testrule",
+        {
+            "public": False,
+            "pubkey": l2.info["id"],
+            "their_funding_sat": 50_000,
+            "rule": "public==true || their_funding_sat>100000 && cln_channel_count>=1",
+        },
+    )
+    assert (
+        rule3["reject_reason"]
+        == "public == 1 -> actual: 0, their_funding_sat > 100000 -> actual: 50000"
+    )
+
+    rule4 = l1.rpc.call(
+        "clnrod-testrule",
+        {
+            "public": False,
+            "pubkey": l2.info["id"],
+            "their_funding_sat": 50_000,
+            "rule": "cln_channel_count>=1",
+        },
+    )
+    assert rule4["reject_reason"] == "None"
+
+    rule5 = l1.rpc.call(
+        "clnrod-testrule",
+        {
+            "public": False,
+            "pubkey": l2.info["id"],
+            "their_funding_sat": 50_000,
+            "rule": "cln_channel_count>1",
+        },
+    )
+    assert rule5["reject_reason"] == "cln_channel_count > 1 -> actual: 1"
+
+    rule6 = l1.rpc.call(
+        "clnrod-testrule",
+        {
+            "public": True,
+            "pubkey": l2.info["id"],
+            "their_funding_sat": 50_000,
+            "rule": "(public==true || their_funding_sat>100000) && cln_channel_count>=1",
+        },
+    )
+    assert rule6["reject_reason"] == "None"
+
+    rule7 = l1.rpc.call(
+        "clnrod-testrule",
+        {
+            "public": True,
+            "pubkey": l2.info["id"],
+            "their_funding_sat": 50_000,
+            "rule": "cln_channel_count>=1 && (public==false || their_funding_sat>100000)",
+        },
+    )
+    assert (
+        rule7["reject_reason"]
+        == "public == 0 -> actual: 1, their_funding_sat > 100000 -> actual: 50000"
+    )
+
+    rule7 = l1.rpc.call(
+        "clnrod-testrule",
+        {
+            "public": True,
+            "pubkey": l2.info["id"],
+            "their_funding_sat": 50_000,
+            "rule": "cln_channel_count>=1 && (public==false || their_funding_sat>100000)",
+        },
+    )
+    assert (
+        rule7["reject_reason"]
+        == "public == 0 -> actual: 1, their_funding_sat > 100000 -> actual: 50000"
+    )
+
+    rule8 = l1.rpc.call(
+        "clnrod-testrule",
+        {
+            "public": True,
+            "pubkey": l2.info["id"],
+            "their_funding_sat": 50_000,
+            "rule": "cln_channel_count>=1 && public==0",
+        },
+    )
+    assert rule8["reject_reason"] == "public == 0 -> actual: 1"
 
 
 def test_clnrod_custom_allow(node_factory, get_plugin):  # noqa: F811

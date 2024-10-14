@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.4.0] - Unreleased
+
+### Added
+- more precise feedback if custom rule denies a peer, lists offending comparisons and their actual value
+
 ## [0.3.0] - 2024-09-23
 
 ### Added

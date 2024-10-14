@@ -20,7 +20,7 @@ Release binaries for
 
 can be found on the [release](https://github.com/daywalker90/clnrod/releases) page. If you are unsure about your architecture you can run ``uname -m``.
 
-They require ``glibc>=2.31``, which you can check with ``ldd --version``.
+Release binaries require ``glibc>=2.31``, which you can check with ``ldd --version``.
 
 # Building
 You can build the plugin yourself instead of using the release binaries.
@@ -81,7 +81,7 @@ The custom rule can make use of the following symbols:
 * ``<=`` smaller than or equal to
 * ``>`` greater than
 * ``<`` smaller than
-* a boolean value is either ``true`` or ``false``
+* a boolean value is either ``true``, ``false``, ``1`` or ``0``
 
 ### Variables
 Variables starting with ``cln_`` query your own gossip, ``amboss_`` the [Amboss](https://amboss.space) API and ``oneml_`` the [1ML](https://1ml.com/) API. There is an one hour cache for collecting data that will be reset if you change the ``clnrod-customrule`` option.
