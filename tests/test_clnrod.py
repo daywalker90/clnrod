@@ -422,11 +422,15 @@ def test_options(node_factory, get_plugin):  # noqa: F811
 
     with pytest.raises(RpcError, match="not a valid integer"):
         l1.rpc.setconfig("clnrod-smtp-port", "test")
-    with pytest.raises(
-        RpcError, match="out of range integral type conversion attempted"
-    ):
+    with pytest.raises(RpcError, match="clnrod-smtp-port out of valid range"):
         l1.rpc.setconfig("clnrod-smtp-port", 99999)
     l1.rpc.setconfig("clnrod-smtp-port", 9999)
+
+    with pytest.raises(RpcError, match="not a valid integer"):
+        l1.rpc.setconfig("clnrod-pinglength", "test")
+    with pytest.raises(RpcError, match="clnrod-pinglength out of valid range"):
+        l1.rpc.setconfig("clnrod-pinglength", 99999)
+    l1.rpc.setconfig("clnrod-pinglength", 9999)
 
     with pytest.raises(RpcError, match="could not parse NotifyVerbosity"):
         l1.rpc.setconfig("clnrod-notify-verbosity", "test")

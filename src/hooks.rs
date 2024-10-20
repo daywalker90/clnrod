@@ -129,6 +129,7 @@ async fn release_hook(
             their_funding_msat,
             channel_flags,
             &config.custom_rule,
+            config.ping_length,
         )
         .await
         {

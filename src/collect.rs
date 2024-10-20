@@ -1,25 +1,29 @@
 use std::{
     path::{Path, PathBuf},
     sync::Arc,
-    time::{Duration, SystemTime, UNIX_EPOCH},
+    time::{Duration, Instant, SystemTime, UNIX_EPOCH},
 };
 
 use anyhow::{anyhow, Error};
 use cln_plugin::Plugin;
 use cln_rpc::{
     model::{
-        requests::{ListchannelsRequest, ListnodesRequest},
+        requests::{GetinfoRequest, ListchannelsRequest, ListnodesRequest, PingRequest},
         responses::ListnodesNodesAddressesType,
     },
     primitives::{Amount, PublicKey},
     ClnRpc,
 };
-use log::debug;
+use log::{debug, info, warn};
 use serde_json::{json, Value};
-use tokio::time;
+use tokio::time::{self, timeout};
 
-use crate::structs::{
-    AmbossResponse, ChannelFlags, OneMl, PeerData, PeerDataCache, PeerInfo, PluginState,
+use crate::{
+    notify::notify,
+    structs::{
+        AmbossResponse, ChannelFlags, NotifyVerbosity, OneMl, PeerData, PeerDataCache, PeerInfo,
+        PluginState,
+    },
 };
 
 async fn get_oneml_data(
@@ -236,6 +240,7 @@ pub async fn collect_data(
     their_funding_msat: Amount,
     channel_flags: ChannelFlags,
     custom_rule: &str,
+    ping_length: u16,
 ) -> Result<PeerData, Error> {
     debug!("collect_data: start");
     let unix_now_s = SystemTime::now()
@@ -254,6 +259,15 @@ pub async fn collect_data(
     let network = plugin.configuration().network;
 
     debug!("collect_data: custom_rule: {}", custom_rule);
+    let ping_task = if custom_rule.to_ascii_lowercase().contains("ping") {
+        let plugin_ping = plugin.clone();
+        Some(tokio::spawn(async move {
+            ln_ping(plugin_ping, pubkey, 3, ping_length).await
+        }))
+    } else {
+        None
+    };
+
     let gossip_task = if custom_rule.to_ascii_lowercase().contains("cln_") {
         let channel_flags_clone = channel_flags.clone();
         Some(tokio::spawn(async move {
@@ -299,6 +313,13 @@ pub async fn collect_data(
         None
     };
 
+    let ping = if let Some(p) = ping_task {
+        let pings = p.await??;
+        Some((pings.iter().map(|y| *y as usize).sum::<usize>() / pings.len()) as u16)
+    } else {
+        None
+    };
+
     let peerinfo = if let Some(gdata) = gossip_task {
         gdata.await??
     } else {
@@ -330,6 +351,7 @@ pub async fn collect_data(
     debug!("collect_data: oneml_data: {:?}", oneml_data);
 
     let peer_data = PeerData {
+        ping,
         peerinfo,
         oneml_data,
         amboss_data,
@@ -375,4 +397,79 @@ fn check_feature(hex: &str, check_bits: Vec<u16>) -> Result<bool, Error> {
         }
     }
     Ok(result)
+}
+
+pub async fn ln_ping(
+    plugin: Plugin<PluginState>,
+    pubkey: PublicKey,
+    count: u64,
+    ping_length: u16,
+) -> Result<Vec<u16>, Error> {
+    let timeout_ms = 5000;
+    let rpc_path =
+        Path::new(&plugin.configuration().lightning_dir).join(plugin.configuration().rpc_file);
+    let mut rpc = ClnRpc::new(rpc_path).await?;
+    let now_delay = Instant::now();
+    let _dummy_rpc = rpc.call_typed(&GetinfoRequest {}).await;
+    let rpc_delay = now_delay.elapsed().as_millis() as u16;
+    info!(
+        "Rpc delay that will be subtracted from ping: {}ms",
+        rpc_delay
+    );
+    let mut results = Vec::new();
+    let mut c = 0;
+    while c < count {
+        c += 1;
+        let now = Instant::now();
+        let timeout_result = match timeout(
+            Duration::from_millis(timeout_ms as u64),
+            rpc.call_typed(&PingRequest {
+                len: Some(ping_length),
+                pongbytes: Some(ping_length),
+                id: pubkey,
+            }),
+        )
+        .await
+        {
+            Ok(o) => o,
+            Err(e) => {
+                results.push(timeout_ms);
+                notify(
+                    &plugin,
+                    "Clnrod ping TIMEOUT.",
+                    &format!(
+                        "Pinging {} {}/{} times with {} bytes TIMED OUT: {}\
+                        \n Please check if the `lightning-cli ping` command is stuck for your \
+                        node and requires a restart of CLN",
+                        pubkey, c, count, ping_length, e
+                    ),
+                    Some(pubkey),
+                    NotifyVerbosity::Error,
+                )
+                .await;
+                break;
+            }
+        };
+        let ping_response = match timeout_result {
+            Ok(o) => o,
+            Err(e) => {
+                results.push(timeout_ms);
+                warn!("Ping error: {}", e);
+                time::sleep(Duration::from_millis(250)).await;
+                continue;
+            }
+        };
+        if ping_response.totlen < ping_length {
+            info!("Did not receive the full length ping back");
+        }
+        let ping = (now.elapsed().as_millis() as u16).saturating_sub(rpc_delay);
+        info!(
+            "Pinged {} {}/{} times with {} bytes in {}ms",
+            pubkey, c, count, ping_length, ping
+        );
+        results.push(ping);
+        time::sleep(Duration::from_millis(250)).await;
+    }
+
+    Ok(results)
 }

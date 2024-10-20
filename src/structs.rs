@@ -75,6 +75,7 @@ pub struct Config {
     pub email_to: String,
     pub send_mail: bool,
     pub notify_verbosity: NotifyVerbosity,
+    pub ping_length: u16,
 }
 impl Config {
     pub fn new() -> Config {
@@ -90,6 +91,7 @@ impl Config {
             email_to: String::new(),
             send_mail: false,
             notify_verbosity: NotifyVerbosity::All,
+            ping_length: 256,
         }
     }
 }
@@ -106,6 +108,9 @@ impl Display for PeerDataCache {
             "their_funding_sat: {}\npublic: {}",
             self.peer_data.peerinfo.their_funding_sat, self.peer_data.peerinfo.channel_flags.public
         );
+        if let Some(p) = self.peer_data.ping {
+            result.push_str(&format!("\nping: {}", p));
+        }
         if let Some(c) = self.peer_data.peerinfo.node_capacity_sat {
             result.push_str(&format!("\ncln_node_capacity_sat: {}", c))
         }
@@ -198,6 +203,7 @@ impl Display for PeerDataCache {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct PeerData {
+    pub ping: Option<u16>,
     pub peerinfo: PeerInfo,
     pub oneml_data: Option<OneMl>,
     pub amboss_data: Option<AmbossNodeData>,

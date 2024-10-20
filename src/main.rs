@@ -7,7 +7,7 @@ use config::{read_config, setconfig_callback};
 use hooks::{openchannel2_hook, openchannel_hook};
 use log::info;
 use pest_derive::Parser;
-use rpc::{clnrod_reload, clnrod_testmail, clnrod_testrule};
+use rpc::{clnrod_reload, clnrod_testmail, clnrod_testping, clnrod_testrule};
 use structs::PluginState;
 
 mod collect;
@@ -23,6 +23,7 @@ pub const PLUGIN_NAME: &str = "clnrod";
 const OPT_DENY_MESSAGE: &str = "clnrod-denymessage";
 const OPT_BLOCK_MODE: &str = "clnrod-blockmode";
 const OPT_CUSTOM_RULE: &str = "clnrod-customrule";
+const OPT_PING_LENGTH: &str = "clnrod-pinglength";
 const OPT_SMTP_USERNAME: &str = "clnrod-smtp-username";
 const OPT_SMTP_PASSWORD: &str = "clnrod-smtp-password";
 const OPT_SMTP_SERVER: &str = "clnrod-smtp-server";
@@ -50,6 +51,9 @@ async fn main() -> Result<(), anyhow::Error> {
     let opt_custom_rule: StringConfigOption =
         ConfigOption::new_str_no_default(OPT_CUSTOM_RULE, "Custom rule matching, see README.md")
             .dynamic();
+    let opt_ping_length: IntegerConfigOption =
+        ConfigOption::new_i64_no_default(OPT_PING_LENGTH, "Length of the ping messages in bytes")
+            .dynamic();
     let opt_smtp_username: StringConfigOption =
         ConfigOption::new_str_no_default(OPT_SMTP_USERNAME, "Set smtp username").dynamic();
     let opt_smtp_password: StringConfigOption =
@@ -73,10 +77,16 @@ async fn main() -> Result<(), anyhow::Error> {
         .rpcmethod("clnrod-reload", "Reloads rules from file.", clnrod_reload)
         .rpcmethod("clnrod-testrule", "Test custom rule", clnrod_testrule)
         .rpcmethod("clnrod-testmail", "Test mail config", clnrod_testmail)
+        .rpcmethod(
+            "clnrod-testping",
+            "Test the ping to a node",
+            clnrod_testping,
+        )
         .setconfig_callback(setconfig_callback)
         .option(opt_deny_message)
         .option(opt_block_mode)
         .option(opt_custom_rule)
+        .option(opt_ping_length)
         .option(opt_smtp_username)
         .option(opt_smtp_password)
         .option(opt_smtp_server)

@@ -182,6 +182,7 @@ fn evaluate_value(pair: &Pair<Rule>, variables: &PeerData) -> Result<u64, Error>
                     0
                 })
             }
+            p if p.eq_ignore_ascii_case("ping") => Ok(variables.ping.unwrap() as u64),
             p if p.eq_ignore_ascii_case("oneml_capacity") => Ok(variables
                 .oneml_data
                 .as_ref()

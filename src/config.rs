@@ -1,4 +1,4 @@
-use anyhow::{anyhow, Error};
+use anyhow::{anyhow, Context, Error};
 use cln_plugin::{options, ConfiguredPlugin, Plugin};
 use cln_rpc::primitives::PublicKey;
 use cln_rpc::RpcError;
@@ -21,8 +21,8 @@ use crate::{
 };
 use crate::{
     OPT_BLOCK_MODE, OPT_CUSTOM_RULE, OPT_DENY_MESSAGE, OPT_EMAIL_FROM, OPT_EMAIL_TO,
-    OPT_NOTIFY_VERBOSITY, OPT_SMTP_PASSWORD, OPT_SMTP_PORT, OPT_SMTP_SERVER, OPT_SMTP_USERNAME,
-    PLUGIN_NAME,
+    OPT_NOTIFY_VERBOSITY, OPT_PING_LENGTH, OPT_SMTP_PASSWORD, OPT_SMTP_PORT, OPT_SMTP_SERVER,
+    OPT_SMTP_USERNAME, PLUGIN_NAME,
 };
 
 pub async fn read_config(
@@ -100,6 +100,9 @@ fn get_startup_options(
     if let Some(cr) = plugin.option_str(OPT_CUSTOM_RULE)? {
         check_option(&mut config, OPT_CUSTOM_RULE, &cr)?;
     };
+    if let Some(pl) = plugin.option_str(OPT_PING_LENGTH)? {
+        check_option(&mut config, OPT_PING_LENGTH, &pl)?;
+    };
     if let Some(smtp_user) = plugin.option_str(OPT_SMTP_USERNAME)? {
         check_option(&mut config, OPT_SMTP_USERNAME, &smtp_user)?;
     };
@@ -139,10 +142,21 @@ fn check_option(config: &mut Config, name: &str, value: &options::Value) -> Resu
             parse_rule(value.as_str().unwrap())?;
             config.custom_rule = value.as_str().unwrap().to_string();
         }
+        n if n.eq(OPT_PING_LENGTH) => {
+            let ping_length = u16::try_from(value.as_i64().unwrap())
+                .context(format!("{} out of valid range", OPT_PING_LENGTH))?;
+            if ping_length == 0 {
+                return Err(anyhow!("{} must be greater than 0", OPT_PING_LENGTH));
+            }
+            config.ping_length = ping_length;
+        }
         n if n.eq(OPT_SMTP_USERNAME) => config.smtp_username = value.as_str().unwrap().to_string(),
         n if n.eq(OPT_SMTP_PASSWORD) => config.smtp_password = value.as_str().unwrap().to_string(),
         n if n.eq(OPT_SMTP_SERVER) => config.smtp_server = value.as_str().unwrap().to_string(),
-        n if n.eq(OPT_SMTP_PORT) => config.smtp_port = u16::try_from(value.as_i64().unwrap())?,
+        n if n.eq(OPT_SMTP_PORT) => {
+            config.smtp_port = u16::try_from(value.as_i64().unwrap())
+                .context(format!("{} out of valid range", OPT_SMTP_PORT))?
+        }
         n if n.eq(OPT_EMAIL_FROM) => config.email_from = value.as_str().unwrap().to_string(),
         n if n.eq(OPT_EMAIL_TO) => config.email_to = value.as_str().unwrap().to_string(),
         n if n.eq(OPT_NOTIFY_VERBOSITY) => {
@@ -179,7 +193,7 @@ fn parse_option(name: &str, value: &serde_json::Value) -> Result<options::Value,
                 Err(anyhow!("{} is not a string!", OPT_CUSTOM_RULE))
             }
         }
-        n if n.eq(OPT_SMTP_PORT) => {
+        n if n.eq(OPT_SMTP_PORT) | n.eq(OPT_PING_LENGTH) => {
             if let Some(n_i64) = value.as_i64() {
                 return Ok(options::Value::Integer(n_i64));
             } else if let Some(n_str) = value.as_str() {
