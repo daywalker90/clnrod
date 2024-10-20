@@ -1,5 +1,5 @@
 WHITESPACE = _{ " " | "\t" | "\n" }
-VARIABLE = @{ ^"cln_anchor_support" | ^"cln_has_clearnet" | ^"cln_has_tor" | ^"their_funding_sat" | ^"public" | ^"cln_channel_count" | ^"cln_node_capacity_sat" | ^"oneml_capacity" | ^"oneml_channelcount" | ^"oneml_age" | ^"oneml_growth" | ^"oneml_availability" | ^"amboss_capacity_rank" | ^"amboss_channels_rank" | ^"amboss_has_email" | ^"amboss_has_linkedin" | ^"amboss_has_nostr" | ^"amboss_has_telegram" | ^"amboss_has_twitter" | ^"amboss_has_website" | ^"amboss_terminal_web_rank"}
+VARIABLE = @{ ^"cln_anchor_support" | ^"cln_has_clearnet" | ^"cln_has_tor" | ^"their_funding_sat" | ^"public"| ^"ping" | ^"cln_channel_count" | ^"cln_node_capacity_sat" | ^"oneml_capacity" | ^"oneml_channelcount" | ^"oneml_age" | ^"oneml_growth" | ^"oneml_availability" | ^"amboss_capacity_rank" | ^"amboss_channels_rank" | ^"amboss_has_email" | ^"amboss_has_linkedin" | ^"amboss_has_nostr" | ^"amboss_has_telegram" | ^"amboss_has_twitter" | ^"amboss_has_website" | ^"amboss_terminal_web_rank"}
 
 value = { INTEGER | BOOLEAN }
 INTEGER = @{ ASCII_DIGIT+ }

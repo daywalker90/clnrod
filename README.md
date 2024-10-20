@@ -54,6 +54,9 @@ New rpc methods with this plugin:
     * example: ``lightning-cli clnrod-testrule -k pubkey=02eadbd9e7557375161df8b646776a547c5cbc2e95b3071ec81553f8ec2cea3b8c public=true their_funding_sat=1000000 rule='amboss_terminal_web_rank < 1000'`` 
 * **clnrod-testmail**
     * send a test mail to check your email config
+* **clnrod-testping** *pubkey* [*count*] [*length*]
+    * measure the time it takes in ms to send a *length* (Default: 256) bytes message to the node with *pubkey* and back. Pings *count* (Default: 3) times. You must connect to the node first!
+
 
 ## Blockmode: allow
 Setting the blockmode to allow means:
@@ -87,6 +90,7 @@ The custom rule can make use of the following symbols:
 Variables starting with ``cln_`` query your own gossip, ``amboss_`` the [Amboss](https://amboss.space) API and ``oneml_`` the [1ML](https://1ml.com/) API. There is an one hour cache for collecting data that will be reset if you change the ``clnrod-customrule`` option.
 * ``their_funding_sat``: how much sats they are willing to open with on their side
 * ``public``: if the peer intends to open the channel as public this will be ``true`` otherwise ``false``
+* ``ping``: time it takes in ms to send a ``clnrod-pinglength`` (Default: 256) bytes packet to the opener and back. Timeouts and errors will log but not flat out reject the channel, instead the timeout value of 5000 will be used. It is recommended to have email notifications on or watch the logs for ping timeouts (``Clnrod ping TIMEOUT``), since i encountered a rare case of CLN's ping getting stuck, requiring a node restart
 * ``cln_node_capacity_sat``: the total capacity of the peer in sats
 * ``cln_channel_count``: the number of channels of the peer
 * ``cln_has_clearnet``: if the peer has any clearnet addresses published this will be ``true`` otherwise ``false``
@@ -127,6 +131,7 @@ You can mix two methods and if you set the same option with different methods, i
 * ``clnrod-denymessage``: The custom message we will send to a rejected peer, defaults to `CLNROD: Channel rejected by channel acceptor, sorry!`
 * ``clnrod-blockmode``: Set the preferred block mode to *allow* or *deny*, defaults to *deny* (with no config clnrod accepts all channels, see Documentation)
 * ``clnrod-customrule``: Set the custom rule for accepting channels, see Documentation, defaults to none
+* ``clnrod-pinglength``: Set the length of the ping message for the custom rule check. Defaults to `256` bytes
 ### email
 * ``clnrod-smtp-username``: smtp username for email notifications
 * ``clnrod-smtp-password``: smtp password for email notifications

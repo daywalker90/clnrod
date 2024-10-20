@@ -1,9 +1,12 @@
 # Changelog
 
-## [0.4.0] - Unreleased
+## [0.4.0] - 2024-10-20
 
 ### Added
-- more precise feedback if custom rule denies a peer, lists offending comparisons and their actual value
+- new custom rule variable ``ping``: check the time it takes to send a ``clnrod-pinglength`` bytes long message to the opening peer and back. Defaults to the average of 3 pings with 256 bytes length. Timeouts and errors will log but not flat out reject the channel, instead the timeout value of 5000 will be used. It is recommended to have email notifications on or watch the logs for ping timeouts (``Clnrod ping TIMEOUT``), since i encountered a rare case of CLN's ping getting stuck, requiring a node restart
+- new rpc method ``clnrod-testping`` *pubkey* [*count*] [*length*]: try the ping measurements with a few options
+- new option ``clnrod-pinglength``: set the length of the ping message for the custom rule check. Defaults to 256 bytes
+- more precise feedback if a custom rule rejects a peer, lists offending comparisons (non-exhaustive) that caused the rejection and their actual value
 
 ## [0.3.0] - 2024-09-23
 
