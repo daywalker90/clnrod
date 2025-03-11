@@ -1,7 +1,8 @@
 [package]
 name = "clnrod"
-version = "0.4.1"
+version = "0.4.2"
 edition = "2021"
+rust-version = "1.75"
 
 
 [dependencies]
@@ -13,10 +14,10 @@ parking_lot = "0.12"
 pest = "2"
 pest_derive = "2"
 
-cln-rpc = "0.3"
-# cln-rpc = { path="../lightning/cln-rpc/", version = "^0.2" }
-cln-plugin = "0.3"
-# cln-plugin = { path="../lightning/plugins/", version = "^0.2" }
+cln-rpc = "0.4"
+# cln-rpc = { path="../lightning/cln-rpc/", version = "^0.3" }
+cln-plugin = "0.4"
+# cln-plugin = { path="../lightning/plugins/", version = "^0.3" }
 
 reqwest = { version = "0.12", default-features = false, features = ["http2", "json","rustls-tls"] }
 lettre = {version = "0.11", default-features = false, features = ["tokio1-rustls-tls","smtp-transport","builder"]}
