@@ -211,14 +211,14 @@ async fn get_gossip_data(
                 .map(|c| c.amount_msat.msat() / 1000)
                 .sum(),
         ),
-        has_clearnet: Some(list_node.addresses.as_ref().map_or(false, |a| {
+        has_clearnet: Some(list_node.addresses.as_ref().is_some_and(|a| {
             a.iter().any(|t| {
                 t.item_type == ListnodesNodesAddressesType::DNS
                     || t.item_type == ListnodesNodesAddressesType::IPV4
                     || t.item_type == ListnodesNodesAddressesType::IPV6
             })
         })),
-        has_tor: Some(list_node.addresses.as_ref().map_or(false, |a| {
+        has_tor: Some(list_node.addresses.as_ref().is_some_and(|a| {
             a.iter().any(|t| {
                 t.item_type == ListnodesNodesAddressesType::TORV2
                     || t.item_type == ListnodesNodesAddressesType::TORV3
