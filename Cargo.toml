@@ -2,7 +2,7 @@
 name = "clnrod"
 version = "0.4.2"
 edition = "2021"
-rust-version = "1.75"
+rust-version = "1.85"
 
 
 [dependencies]
