@@ -137,7 +137,7 @@ The custom rule can make use of the following symbols:
 Variables starting with ``cln_`` query your own gossip, ``amboss_`` the [Amboss](https://amboss.space) API and ``oneml_`` the [1ML](https://1ml.com/) API. There is an one hour cache for collecting data that will be reset if you change the ``clnrod-customrule`` option.
 * ``their_funding_sat``: how much sats they are willing to open with on their side
 * ``public``: if the peer intends to open the channel as public this will be ``true`` otherwise ``false``
-* ``ping``: time it takes in ms to send a ``clnrod-pinglength`` (Default: 256) bytes packet to the opener and back. Timeouts and errors will log but not flat out reject the channel, instead the timeout value of 5000 will be used. It is recommended to have email notifications on or watch the logs for ping timeouts (``Clnrod ping TIMEOUT``), since i encountered a rare case of CLN's ping getting stuck, requiring a node restart
+* ``ping`` (:warning: DO NOT USE ON CLN 25.05 OR OLDER: your CLN ping command might get stuck and require a node restart!): time it takes in ms to send a ``clnrod-pinglength`` (Default: 256) bytes packet to the opener and back. Timeouts and errors will log but not flat out reject the channel, instead the timeout value of 5000 will be used. It is recommended to have email notifications on or watch the logs for ping timeouts (``Clnrod ping TIMEOUT``)
 * ``cln_node_capacity_sat``: the total capacity of the peer in sats
 * ``cln_channel_count``: the number of channels of the peer
 * ``cln_has_clearnet``: if the peer has any clearnet addresses published this will be ``true`` otherwise ``false``
