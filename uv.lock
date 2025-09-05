@@ -6,9 +6,6 @@ resolution-markers = [
     "python_full_version < '3.10'",
 ]
 
-[manifest]
-overrides = [{ name = "pytest", specifier = ">=8.4,<9" }]
-
 [[package]]
 name = "asn1crypto"
 version = "1.5.1"
@@ -360,7 +357,7 @@ dev = [
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "pyln-testing", specifier = ">=25.5" },
+    { name = "pyln-testing", specifier = ">=25.9" },
     { name = "pytest", specifier = ">=8.4,<9" },
     { name = "pytest-timeout", specifier = ">=2.4,<3" },
     { name = "pytest-xdist", specifier = ">=3.7,<4" },
@@ -840,7 +837,7 @@ wheels = [
 
 [[package]]
 name = "pyln-testing"
-version = "25.5"
+version = "25.9"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "cheroot" },
@@ -854,9 +851,9 @@ dependencies = [
     { name = "python-bitcoinlib" },
     { name = "requests" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/3e/a9/6d7cfed48546be40611935db52749f613b38ad931439b875c12ce242af95/pyln_testing-25.5.tar.gz", hash = "sha256:528190bfa0433232c10846db094ea0bab59ebc9bf60a72b009876febff9c75fc", size = 49716, upload-time = "2025-06-16T18:13:48.322Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/2f/94/a54908aec15b9b83ee728665c1ac8c061ca2477d7802edbb890e38568571/pyln_testing-25.9.tar.gz", hash = "sha256:0112d4a613e18c79893c6ba6b9b1f9531b7112fb1536e7867789e8ae4a11c0b5", size = 50102, upload-time = "2025-09-02T16:46:24.309Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/3c/95/7a6fdbd07bca81fe1528e00c5498fb326b1776654fd2e6265e9df8feef20/pyln_testing-25.5-py3-none-any.whl", hash = "sha256:c79ea32ba3de858a8847933edad45397cdeb26d8ec9e6c7363e9fb300114c8aa", size = 51168, upload-time = "2025-06-16T18:13:47.129Z" },
+    { url = "https://files.pythonhosted.org/packages/79/23/b5f799bc57dd4341766d9fda74399be0ebb03f8ec4b0b3beb4707d175dc7/pyln_testing-25.9-py3-none-any.whl", hash = "sha256:0b80ccba0f0441500a7a45e6b453d5ddeb88cc5a05c1ec42de73eb6c39c8dee0", size = 51992, upload-time = "2025-09-02T16:46:23.27Z" },
 ]
 
 [[package]]
