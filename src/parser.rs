@@ -14,7 +14,7 @@ use crate::{
     Rule, RulesParser,
 };
 
-pub fn parse_rule(rule: &str) -> Result<Pairs<Rule>, Error> {
+pub fn parse_rule(rule: &str) -> Result<Pairs<'_, Rule>, Error> {
     match RulesParser::parse(Rule::rule, rule) {
         Ok(mut pairs) => {
             if pairs.as_str() != rule {
