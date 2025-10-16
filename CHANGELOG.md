@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.4.3] - 2025-10-16
+
+### Added
+- added node alias to all notifications if available
+
 ## [0.4.2] - 2025-03-11
 
 ### Changed
