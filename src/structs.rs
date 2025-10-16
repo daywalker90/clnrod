@@ -20,6 +20,7 @@ pub struct PluginState {
     pub amboss_lock: Arc<tokio::sync::Mutex<u128>>,
     pub oneml_lock: Arc<tokio::sync::Mutex<u128>>,
     pub peerdata_cache: Arc<Mutex<HashMap<PublicKey, PeerDataCache>>>,
+    pub alias_cache: Arc<Mutex<HashMap<PublicKey, String>>>,
 }
 impl PluginState {
     pub fn new() -> PluginState {
@@ -29,6 +30,7 @@ impl PluginState {
             amboss_lock: Arc::new(tokio::sync::Mutex::new(0)),
             oneml_lock: Arc::new(tokio::sync::Mutex::new(0)),
             peerdata_cache: Arc::new(Mutex::new(HashMap::new())),
+            alias_cache: Arc::new(Mutex::new(HashMap::new())),
         }
     }
 }

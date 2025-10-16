@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use anyhow::anyhow;
 use cln_plugin::{
     options::{ConfigOption, DefaultStringConfigOption, IntegerConfigOption, StringConfigOption},
@@ -9,6 +11,7 @@ use log::info;
 use pest_derive::Parser;
 use rpc::{clnrod_reload, clnrod_testmail, clnrod_testping, clnrod_testrule};
 use structs::PluginState;
+use tokio::time;
 
 mod collect;
 mod config;
@@ -17,6 +20,7 @@ mod notify;
 mod parser;
 mod rpc;
 mod structs;
+mod tasks;
 
 pub const PLUGIN_NAME: &str = "clnrod";
 
@@ -111,6 +115,17 @@ async fn main() -> Result<(), anyhow::Error> {
         None => return Err(anyhow!("Error configuring clnrod!")),
     };
     if let Ok(plugin) = confplugin.start(state).await {
+        let aliasclone = plugin.clone();
+        tokio::spawn(async move {
+            time::sleep(Duration::from_secs(60 * 10)).await;
+            loop {
+                match tasks::refresh_alias_cache(aliasclone.clone()).await {
+                    Ok(()) => (),
+                    Err(e) => log::warn!("Error in refresh_alias_cache thread: {e}"),
+                };
+                time::sleep(Duration::from_secs(60 * 60)).await;
+            }
+        });
         plugin.join().await
     } else {
         Err(anyhow!("Error starting clnrod!"))

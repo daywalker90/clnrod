@@ -68,6 +68,17 @@ pub async fn notify(
     pubkey: Option<PublicKey>,
     verbosity: NotifyVerbosity,
 ) {
+    let alias = if let Some(pk) = &pubkey {
+        plugin
+            .state()
+            .alias_cache
+            .lock()
+            .get(pk)
+            .cloned()
+            .unwrap_or("N/A".to_owned())
+    } else {
+        "N/A".to_owned()
+    };
     let config = plugin.state().config.lock().clone();
     let cache = if let Some(pk) = &pubkey {
         plugin.state().peerdata_cache.lock().get(pk).cloned()
@@ -76,20 +87,22 @@ pub async fn notify(
     };
     if verbosity == NotifyVerbosity::Error {
         warn!(
-            "{}: pubkey: {} message: {}",
+            "{}: pubkey: {} alias: {} message: {}",
             subject,
             pubkey
                 .map(|pk| pk.to_string())
                 .unwrap_or("None".to_string()),
+            alias,
             body
         );
     } else {
         info!(
-            "{}: pubkey: {} message: {}",
+            "{}: pubkey: {} alias: {} message: {}",
             subject,
             pubkey
                 .map(|pk| pk.to_string())
                 .unwrap_or("None".to_string()),
+            alias,
             body
         );
     }
@@ -99,7 +112,8 @@ pub async fn notify(
             &config,
             &subject.to_string(),
             &format!(
-                "pubkey:\n{}\n\nMessage:\n{}\n\nCollected data:\n{}",
+                "alias:\n{}\n\npubkey:\n{}\n\nMessage:\n{}\n\nCollected data:\n{}",
+                alias,
                 pubkey
                     .map(|pk| pk.to_string())
                     .unwrap_or("None".to_string()),
