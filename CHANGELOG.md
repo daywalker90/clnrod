@@ -7,12 +7,16 @@
 - new boolean option to leak the reason in the reject message: ``clnrod-leakreason``, defaults to `false`
 - method usage returned by ``lightning-cli help``
 - defaults for options returned by ``lightning-cli listconfigs``
+- ``clnrod-testping`` also returns the median ping
 
 ### Changed
 - empty ``clnrod-denymessage`` no longer allowed, please let your peer know it's not a lightning bug
+- ``clnrod-testping`` now connects automatically to the peer
+- ``clnrod-testping`` length argument now defaults to ``clnrod-pinglength``
+- all ping measurements were subtracted by a rpc delay amount but after pings started working properly in 25.09 it turns out this would lead to unrealistically low pings, so i removed that and as a result pings might be slightly higher now
 
 ### Fixed
-- cache invalidation bug: multiple quick opening attempts with different opening specific data like ``their_funding_sat`` would use the first value from cache
+- cache invalidation bug: multiple quick (within 1 hour) opening attempts with different opening specific data like ``their_funding_sat`` would use the first value from cache
 
 ## [0.4.3] - 2025-10-16
 

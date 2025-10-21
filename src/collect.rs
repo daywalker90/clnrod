@@ -8,10 +8,7 @@ use anyhow::{anyhow, Error};
 use cln_plugin::Plugin;
 use cln_rpc::{
     model::{
-        requests::{
-            GetinfoRequest, ListchannelsRequest, ListnodesRequest, ListpeerchannelsRequest,
-            PingRequest,
-        },
+        requests::{ListchannelsRequest, ListnodesRequest, ListpeerchannelsRequest, PingRequest},
         responses::ListnodesNodesAddressesType,
     },
     primitives::{Amount, ChannelState, PublicKey},
@@ -461,13 +458,6 @@ pub async fn ln_ping(
     let rpc_path =
         Path::new(&plugin.configuration().lightning_dir).join(plugin.configuration().rpc_file);
     let mut rpc = ClnRpc::new(rpc_path).await?;
-    let now_delay = Instant::now();
-    let _dummy_rpc = rpc.call_typed(&GetinfoRequest {}).await;
-    let rpc_delay = now_delay.elapsed().as_millis() as u16;
-    log::info!(
-        "Rpc delay that will be subtracted from ping: {}ms",
-        rpc_delay
-    );
     let mut results = Vec::new();
     let mut c = 0;
     while c < count {
@@ -514,7 +504,7 @@ pub async fn ln_ping(
         if ping_response.totlen < ping_length {
             log::info!("Did not receive the full length ping back");
         }
-        let ping = (now.elapsed().as_millis() as u16).saturating_sub(rpc_delay);
+        let ping = now.elapsed().as_millis() as u16;
         log::info!(
             "Pinged {} {}/{} times with {} bytes in {}ms",
             pubkey,
@@ -527,5 +517,6 @@ pub async fn ln_ping(
         time::sleep(Duration::from_millis(250)).await;
     }
 
+    results.sort();
     Ok(results)
 }
