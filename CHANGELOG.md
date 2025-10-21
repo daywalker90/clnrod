@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.5.0] - 2025-10-21
+
+### Added
+- new custom rule variable ``cln_multi_channel_count`` to restrict the number of multiple channels per peer
+
+### Fixed
+- cache invalidation bug: multiple quick opening attempts with different opening specific data like ``their_funding_sat`` would use the first value from cache
+
 ## [0.4.3] - 2025-10-16
 
 ### Added

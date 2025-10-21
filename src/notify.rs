@@ -11,7 +11,6 @@ use lettre::{
     },
     AsyncSmtpTransport, AsyncTransport, Message, Tokio1Executor,
 };
-use log::{info, warn};
 
 use crate::structs::{Config, NotifyVerbosity, PluginState};
 
@@ -51,9 +50,10 @@ async fn send_mail(
     // Send the email
     let result = mailer.send(email).await;
     if result.is_ok() {
-        info!(
+        log::info!(
             "Sent email with subject: `{}` to: `{}`",
-            subject, config.email_to
+            subject,
+            config.email_to
         );
         Ok(())
     } else {
@@ -86,7 +86,7 @@ pub async fn notify(
         None
     };
     if verbosity == NotifyVerbosity::Error {
-        warn!(
+        log::warn!(
             "{}: pubkey: {} alias: {} message: {}",
             subject,
             pubkey
@@ -96,7 +96,7 @@ pub async fn notify(
             body
         );
     } else {
-        info!(
+        log::info!(
             "{}: pubkey: {} alias: {} message: {}",
             subject,
             pubkey
@@ -124,7 +124,7 @@ pub async fn notify(
         )
         .await
         {
-            warn!("Error sending mail: {} pubkey: {:?}", e, pubkey);
+            log::warn!("Error sending mail: {} pubkey: {:?}", e, pubkey);
         };
     }
 }

@@ -66,7 +66,6 @@ pub async fn clnrod_testrule(
                 let rule = r
                     .as_str()
                     .ok_or_else(|| anyhow!("rule: not a valid string"))?;
-                plugin.state().peerdata_cache.lock().remove(&pubkey);
                 let data = collect_data(
                     &plugin,
                     pubkey,

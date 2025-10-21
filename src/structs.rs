@@ -108,7 +108,8 @@ impl Display for PeerDataCache {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         let mut result = format!(
             "their_funding_sat: {}\npublic: {}",
-            self.peer_data.peerinfo.their_funding_sat, self.peer_data.peerinfo.channel_flags.public
+            self.peer_data.openinginfo.their_funding_sat,
+            self.peer_data.openinginfo.channel_flags.public
         );
         if let Some(p) = self.peer_data.ping {
             result.push_str(&format!("\nping: {}", p));
@@ -119,6 +120,10 @@ impl Display for PeerDataCache {
         if let Some(c) = self.peer_data.peerinfo.channel_count {
             result.push_str(&format!("\ncln_channel_count: {}", c))
         }
+        result.push_str(&format!(
+            "\ncln_multi_channel_count: {}",
+            self.peer_data.openinginfo.multi_channel_count
+        ));
         if let Some(c) = self.peer_data.peerinfo.has_clearnet {
             result.push_str(&format!("\ncln_has_clearnet: {}", c))
         }
@@ -207,15 +212,14 @@ impl Display for PeerDataCache {
 pub struct PeerData {
     pub ping: Option<u16>,
     pub peerinfo: PeerInfo,
+    pub openinginfo: OpeningInfo,
     pub oneml_data: Option<OneMl>,
     pub amboss_data: Option<AmbossNodeData>,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
 pub struct PeerInfo {
     pub pubkey: PublicKey,
-    pub their_funding_sat: u64,
-    pub channel_flags: ChannelFlags,
     pub channel_count: Option<u64>,
     pub node_capacity_sat: Option<u64>,
     pub has_clearnet: Option<bool>,
@@ -223,12 +227,19 @@ pub struct PeerInfo {
     pub anchor_support: Option<bool>,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
+pub struct OpeningInfo {
+    pub their_funding_sat: u64,
+    pub multi_channel_count: u64,
+    pub channel_flags: ChannelFlags,
+}
+
+#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
 pub struct ChannelFlags {
     pub public: bool,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
 pub struct OneMl {
     pub capacity: Option<u64>,
     pub channelcount: Option<u64>,
@@ -255,12 +266,12 @@ pub struct AmbossData {
     pub socials: AmbossSocials,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
 pub struct AmbossGraphInfo {
     pub metrics: Option<AmbossGraphInfoMetrics>,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
 pub struct AmbossGraphInfoMetrics {
     pub capacity_rank: u64,
     pub channels_rank: u64,
@@ -288,12 +299,12 @@ pub struct AmbossSocialsInfo {
     pub website: Option<String>,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
 pub struct AmbossLightningLabs {
     pub terminal_web: Option<AmbossLightningLabsTerminalWeb>,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
 pub struct AmbossLightningLabsTerminalWeb {
     pub position: u64,
 }

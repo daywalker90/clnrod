@@ -8,21 +8,23 @@ use anyhow::{anyhow, Error};
 use cln_plugin::Plugin;
 use cln_rpc::{
     model::{
-        requests::{GetinfoRequest, ListchannelsRequest, ListnodesRequest, PingRequest},
+        requests::{
+            GetinfoRequest, ListchannelsRequest, ListnodesRequest, ListpeerchannelsRequest,
+            PingRequest,
+        },
         responses::ListnodesNodesAddressesType,
     },
-    primitives::{Amount, PublicKey},
+    primitives::{Amount, ChannelState, PublicKey},
     ClnRpc,
 };
-use log::{debug, info, warn};
 use serde_json::{json, Value};
 use tokio::time::{self, timeout};
 
 use crate::{
     notify::notify,
     structs::{
-        AmbossResponse, ChannelFlags, NotifyVerbosity, OneMl, PeerData, PeerDataCache, PeerInfo,
-        PluginState,
+        AmbossResponse, ChannelFlags, NotifyVerbosity, OneMl, OpeningInfo, PeerData, PeerDataCache,
+        PeerInfo, PluginState,
     },
 };
 
@@ -32,7 +34,7 @@ async fn get_oneml_data(
     oneml_lock: Arc<tokio::sync::Mutex<u128>>,
 ) -> Result<OneMl, Error> {
     let mut last_api_call = oneml_lock.lock().await;
-    debug!("oneml_data: start");
+    log::debug!("oneml_data: start");
 
     let mut unix_now_ms = SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -60,7 +62,7 @@ async fn get_oneml_data(
         .duration_since(UNIX_EPOCH)
         .unwrap()
         .as_millis();
-    debug!("oneml_data: done");
+    log::debug!("oneml_data: done");
 
     if response.status().is_success() {
         let json: Value = response.json().await?;
@@ -77,7 +79,7 @@ async fn get_oneml_data(
             })
         }
     } else {
-        debug!("oneml_data: bad API response, status:{}", response.status());
+        log::debug!("oneml_data: bad API response, status:{}", response.status());
         Err(anyhow!(
             "1ML: bad API response, status:{}",
             response.status()
@@ -91,7 +93,7 @@ async fn get_amboss_data(
     amboss_lock: Arc<tokio::sync::Mutex<u128>>,
 ) -> Result<AmbossResponse, Error> {
     let mut last_api_call = amboss_lock.lock().await;
-    debug!("amboss_data: start");
+    log::debug!("amboss_data: start");
 
     let query = "query ExampleQuery($pubkey: String!) {
         getNode(pubkey: $pubkey) {
@@ -149,11 +151,11 @@ async fn get_amboss_data(
         .duration_since(UNIX_EPOCH)
         .unwrap()
         .as_millis();
-    debug!("amboss_data: done");
+    log::debug!("amboss_data: done");
 
     if response.status().is_success() {
         let json_response: serde_json::Value = response.json().await?;
-        debug!("{:?}", json_response);
+        log::debug!("{:?}", json_response);
         let amboss_response: AmbossResponse = serde_json::from_value(json_response)?;
 
         Ok(amboss_response)
@@ -165,13 +167,8 @@ async fn get_amboss_data(
     }
 }
 
-async fn get_gossip_data(
-    rpc_path: PathBuf,
-    pubkey: PublicKey,
-    their_funding_msat: Amount,
-    channel_flags: ChannelFlags,
-) -> Result<PeerInfo, Error> {
-    debug!("gossip_data: start");
+async fn get_gossip_data(rpc_path: PathBuf, pubkey: PublicKey) -> Result<PeerInfo, Error> {
+    log::debug!("gossip_data: start");
     let mut list_node_rpc = ClnRpc::new(&rpc_path).await?;
 
     let list_node_task = tokio::spawn(async move {
@@ -193,7 +190,7 @@ async fn get_gossip_data(
 
     let list_nodes = list_node_task.await??.nodes;
     let list_node = if let Some(node) = list_nodes.first() {
-        debug!("{:?}", node);
+        log::debug!("{:?}", node);
         node
     } else {
         return Err(anyhow!("no node found for {}", pubkey));
@@ -202,8 +199,6 @@ async fn get_gossip_data(
 
     let peerinfo = PeerInfo {
         pubkey,
-        their_funding_sat: their_funding_msat.msat() / 1_000,
-        channel_flags,
         channel_count: Some(list_channels.len() as u64),
         node_capacity_sat: Some(
             list_channels
@@ -230,8 +225,48 @@ async fn get_gossip_data(
             Some(false)
         },
     };
-    debug!("gossip_data: done");
+    log::debug!("gossip_data: done");
     Ok(peerinfo)
+}
+
+async fn get_peer_data(
+    rpc_path: &PathBuf,
+    pubkey: PublicKey,
+    their_funding_msat: Amount,
+    channel_flags: ChannelFlags,
+) -> Result<OpeningInfo, Error> {
+    let mut list_peers_rpc = ClnRpc::new(rpc_path).await?;
+
+    let list_peers = list_peers_rpc
+        .call_typed(&ListpeerchannelsRequest { id: Some(pubkey) })
+        .await?
+        .channels;
+
+    let mut multi_channel_count = 1;
+    for peer in list_peers.into_iter() {
+        if peer.state == ChannelState::CHANNELD_NORMAL
+            || peer.state == ChannelState::CHANNELD_AWAITING_LOCKIN
+            || peer.state == ChannelState::CHANNELD_AWAITING_SPLICE
+            || peer.state == ChannelState::DUALOPEND_AWAITING_LOCKIN
+            || peer.state == ChannelState::DUALOPEND_OPEN_COMMITTED
+            || peer.state == ChannelState::DUALOPEND_OPEN_COMMIT_READY
+            || peer.state == ChannelState::DUALOPEND_OPEN_INIT
+            || peer.state == ChannelState::OPENINGD
+        {
+            multi_channel_count += 1
+        }
+    }
+    log::debug!(
+        "multi_channel_count: {} their_funding_msat: {}",
+        multi_channel_count,
+        their_funding_msat.msat()
+    );
+
+    Ok(OpeningInfo {
+        their_funding_sat: their_funding_msat.msat() / 1000,
+        multi_channel_count,
+        channel_flags,
+    })
 }
 
 pub async fn collect_data(
@@ -242,24 +277,64 @@ pub async fn collect_data(
     custom_rule: &str,
     ping_length: u16,
 ) -> Result<PeerData, Error> {
-    debug!("collect_data: start");
+    log::debug!("collect_data: start");
     let unix_now_s = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .unwrap()
         .as_secs();
+
+    let rpc_path =
+        Path::new(&plugin.configuration().lightning_dir).join(plugin.configuration().rpc_file);
+
+    let peerinfo = PeerInfo {
+        pubkey,
+        channel_count: None,
+        node_capacity_sat: None,
+        has_clearnet: None,
+        has_tor: None,
+        anchor_support: None,
+    };
+
+    let openinginfo = if custom_rule
+        .to_ascii_lowercase()
+        .contains("cln_multi_channel_count")
+    {
+        get_peer_data(&rpc_path, pubkey, their_funding_msat, channel_flags).await?
+    } else {
+        OpeningInfo {
+            their_funding_sat: their_funding_msat.msat() / 1000,
+            multi_channel_count: 1,
+            channel_flags,
+        }
+    };
+
+    let mut peer_data = PeerData {
+        ping: None,
+        peerinfo,
+        openinginfo,
+        oneml_data: None,
+        amboss_data: None,
+    };
+
+    let mut cache_hit = false;
+
     {
         if let Some(cache) = plugin.state().peerdata_cache.lock().get(&pubkey) {
             if unix_now_s - cache.age <= 3600 {
-                return Ok(cache.peer_data.clone());
+                log::debug!("collect_data: cache hit");
+                cache_hit = true;
+                peer_data.ping = cache.peer_data.ping;
+                peer_data.peerinfo = cache.peer_data.peerinfo;
+                peer_data.oneml_data = cache.peer_data.oneml_data;
+                peer_data.amboss_data = cache.peer_data.amboss_data.clone();
             }
         }
     }
-    let rpc_path =
-        Path::new(&plugin.configuration().lightning_dir).join(plugin.configuration().rpc_file);
+
     let network = plugin.configuration().network;
 
-    debug!("collect_data: custom_rule: {}", custom_rule);
-    let ping_task = if custom_rule.to_ascii_lowercase().contains("ping") {
+    log::debug!("collect_data: custom_rule: {}", custom_rule);
+    let ping_task = if !cache_hit && custom_rule.to_ascii_lowercase().contains("ping") {
         let plugin_ping = plugin.clone();
         Some(tokio::spawn(async move {
             ln_ping(plugin_ping, pubkey, 3, ping_length).await
@@ -268,16 +343,15 @@ pub async fn collect_data(
         None
     };
 
-    let gossip_task = if custom_rule.to_ascii_lowercase().contains("cln_") {
-        let channel_flags_clone = channel_flags.clone();
+    let gossip_task = if !cache_hit && custom_rule.to_ascii_lowercase().contains("cln_") {
         Some(tokio::spawn(async move {
-            get_gossip_data(rpc_path, pubkey, their_funding_msat, channel_flags_clone).await
+            get_gossip_data(rpc_path, pubkey).await
         }))
     } else {
         None
     };
 
-    let amboss_task = if custom_rule.to_ascii_lowercase().contains("amboss_") {
+    let amboss_task = if !cache_hit && custom_rule.to_ascii_lowercase().contains("amboss_") {
         let network_amboss = network.clone();
         let amboss_lock = plugin.state().amboss_lock.clone();
         Some(tokio::spawn(async move {
@@ -296,7 +370,7 @@ pub async fn collect_data(
         None
     };
 
-    let oneml_task = if custom_rule.to_ascii_lowercase().contains("oneml_") {
+    let oneml_task = if !cache_hit && custom_rule.to_ascii_lowercase().contains("oneml_") {
         let oneml_lock = plugin.state().oneml_lock.clone();
         Some(tokio::spawn(async move {
             let mut attempts = 1;
@@ -313,49 +387,27 @@ pub async fn collect_data(
         None
     };
 
-    let ping = if let Some(p) = ping_task {
+    if let Some(p) = ping_task {
         let pings = p.await??;
-        Some((pings.iter().map(|y| *y as usize).sum::<usize>() / pings.len()) as u16)
-    } else {
-        None
+        peer_data.ping =
+            Some((pings.iter().map(|y| *y as usize).sum::<usize>() / pings.len()) as u16)
     };
+    log::debug!("collect_data: ping: {:?}", peer_data.ping);
 
-    let peerinfo = if let Some(gdata) = gossip_task {
-        gdata.await??
-    } else {
-        PeerInfo {
-            pubkey,
-            their_funding_sat: their_funding_msat.msat() / 1_000,
-            channel_flags,
-            channel_count: None,
-            node_capacity_sat: None,
-            has_clearnet: None,
-            has_tor: None,
-            anchor_support: None,
-        }
+    if let Some(gdata) = gossip_task {
+        peer_data.peerinfo = gdata.await??;
     };
-    debug!("collect_data: peerinfo: {:?}", peerinfo);
+    log::debug!("collect_data: peerinfo: {:?}", peer_data.peerinfo);
 
-    let amboss_data = if let Some(ad) = amboss_task {
-        Some(ad.await??.data)
-    } else {
-        None
+    if let Some(ad) = amboss_task {
+        peer_data.amboss_data = Some(ad.await??.data)
     };
-    debug!("collect_data: amboss_data: {:?}", amboss_data);
+    log::debug!("collect_data: amboss_data: {:?}", peer_data.amboss_data);
 
-    let oneml_data = if let Some(ml) = oneml_task {
-        Some(ml.await??)
-    } else {
-        None
+    if let Some(ml) = oneml_task {
+        peer_data.oneml_data = Some(ml.await??)
     };
-    debug!("collect_data: oneml_data: {:?}", oneml_data);
-
-    let peer_data = PeerData {
-        ping,
-        peerinfo,
-        oneml_data,
-        amboss_data,
-    };
+    log::debug!("collect_data: oneml_data: {:?}", peer_data.oneml_data);
 
     let mut cache = plugin.state().peerdata_cache.lock();
     cache.insert(
@@ -365,7 +417,7 @@ pub async fn collect_data(
             age: unix_now_s,
         },
     );
-    debug!("collect_data: done");
+    log::debug!("collect_data: done");
     Ok(peer_data)
 }
 
@@ -388,7 +440,7 @@ fn check_feature(hex: &str, check_bits: Vec<u16>) -> Result<bool, Error> {
         let index = bits.len().checked_sub(1 + bit as usize);
         match index.and_then(|i| bits.get(i)) {
             Some(&b) => {
-                debug!("found bit {}: {}", bit, b);
+                log::debug!("found bit {}: {}", bit, b);
                 result = result || b;
             }
             None => {
@@ -412,7 +464,7 @@ pub async fn ln_ping(
     let now_delay = Instant::now();
     let _dummy_rpc = rpc.call_typed(&GetinfoRequest {}).await;
     let rpc_delay = now_delay.elapsed().as_millis() as u16;
-    info!(
+    log::info!(
         "Rpc delay that will be subtracted from ping: {}ms",
         rpc_delay
     );
@@ -454,18 +506,22 @@ pub async fn ln_ping(
             Ok(o) => o,
             Err(e) => {
                 results.push(timeout_ms);
-                warn!("Ping error: {}", e);
+                log::warn!("Ping error: {}", e);
                 time::sleep(Duration::from_millis(250)).await;
                 continue;
             }
         };
         if ping_response.totlen < ping_length {
-            info!("Did not receive the full length ping back");
+            log::info!("Did not receive the full length ping back");
         }
         let ping = (now.elapsed().as_millis() as u16).saturating_sub(rpc_delay);
-        info!(
+        log::info!(
             "Pinged {} {}/{} times with {} bytes in {}ms",
-            pubkey, c, count, ping_length, ping
+            pubkey,
+            c,
+            count,
+            ping_length,
+            ping
         );
         results.push(ping);
         time::sleep(Duration::from_millis(250)).await;

@@ -137,9 +137,10 @@ The custom rule can make use of the following symbols:
 Variables starting with ``cln_`` query your own gossip, ``amboss_`` the [Amboss](https://amboss.space) API and ``oneml_`` the [1ML](https://1ml.com/) API. There is an one hour cache for collecting data that will be reset if you change the ``clnrod-customrule`` option.
 * ``their_funding_sat``: how much sats they are willing to open with on their side
 * ``public``: if the peer intends to open the channel as public this will be ``true`` otherwise ``false``
-* ``ping`` (:warning: DO NOT USE ON CLN 25.05 OR OLDER: your CLN ping command might get stuck and require a node restart!): time it takes in ms to send a ``clnrod-pinglength`` (Default: 256) bytes packet to the opener and back. Timeouts and errors will log but not flat out reject the channel, instead the timeout value of 5000 will be used. It is recommended to have email notifications on or watch the logs for ping timeouts (``Clnrod ping TIMEOUT``)
+* ``ping`` ( :warning: DO NOT USE ON CLN 25.05 OR OLDER: your CLN ping command might get stuck and require a node restart!): time it takes in ms to send a ``clnrod-pinglength`` (Default: 256) bytes packet to the opener and back. Timeouts and errors will log but not flat out reject the channel, instead the timeout value of 5000 will be used. It is recommended to have email notifications on or watch the logs for ping timeouts (``Clnrod ping TIMEOUT``)
 * ``cln_node_capacity_sat``: the total capacity of the peer in sats
 * ``cln_channel_count``: the number of channels of the peer
+* ``cln_multi_channel_count``: Restrict the number of multiple channels between you and the peer. Only channels in an active or opening state are counted. Includes the channel from the opening attempt.
 * ``cln_has_clearnet``: if the peer has any clearnet addresses published this will be ``true`` otherwise ``false``
 * ``cln_has_tor``: if the peer has any tor addresses published this will be ``true`` otherwise ``false``
 * ``cln_anchor_support``: if the peer supports anchor channels this will be ``true`` otherwise ``false``
@@ -158,7 +159,7 @@ Variables starting with ``cln_`` query your own gossip, ``amboss_`` the [Amboss]
 * ``amboss_has_website``: if this peer has published a website address on amboss this will be ``true`` otherwise ``false``
 * ``amboss_terminal_web_rank``: the [terminal.lightning](https://terminal.lightning.engineering/) rank pulled from amboss API
 
-Example: ``their_funding_sat >= 1000000 && their_funding_sat <= 50000000 && (amboss_has_email==true || amboss_has_nostr==true)`` will accept channels that are between 1000000 and 50000000 sats in size and either have a email or nostr info on amboss
+Example: ``their_funding_sat >= 1000000 && their_funding_sat <= 50000000 && cln_multi_channel_count==1 && (amboss_has_email==true || amboss_has_nostr==true)`` will accept channels that are between 1000000 and 50000000 sats in size and if there isn't an active/opening channel to this peer already and the peer has either an email or nostr info on amboss
 
 # How to set options
 ``clnrod`` is a dynamic plugin with dynamic options, so you can start it after CLN is already running and modify it's options after the plugin is started. You have two different methods of setting the options:

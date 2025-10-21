@@ -7,7 +7,6 @@ use cln_plugin::{
 };
 use config::{read_config, setconfig_callback};
 use hooks::{openchannel2_hook, openchannel_hook};
-use log::info;
 use pest_derive::Parser;
 use rpc::{clnrod_reload, clnrod_testmail, clnrod_testping, clnrod_testrule};
 use structs::PluginState;
@@ -109,7 +108,7 @@ async fn main() -> Result<(), anyhow::Error> {
                 Ok(()) => &(),
                 Err(e) => return plugin.disable(format!("{}", e).as_str()).await,
             };
-            info!("read config done");
+            log::info!("read config done");
             plugin
         }
         None => return Err(anyhow!("Error configuring clnrod!")),
