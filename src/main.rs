@@ -2,7 +2,10 @@ use std::time::Duration;
 
 use anyhow::anyhow;
 use cln_plugin::{
-    options::{ConfigOption, DefaultStringConfigOption, IntegerConfigOption, StringConfigOption},
+    options::{
+        ConfigOption, DefaultBooleanConfigOption, DefaultStringConfigOption, IntegerConfigOption,
+        StringConfigOption,
+    },
     Builder,
 };
 use config::{read_config, setconfig_callback};
@@ -24,6 +27,7 @@ mod tasks;
 pub const PLUGIN_NAME: &str = "clnrod";
 
 const OPT_DENY_MESSAGE: &str = "clnrod-denymessage";
+const OPT_LEAK_REASON: &str = "clnrod-leakreason";
 const OPT_BLOCK_MODE: &str = "clnrod-blockmode";
 const OPT_CUSTOM_RULE: &str = "clnrod-customrule";
 const OPT_PING_LENGTH: &str = "clnrod-pinglength";
@@ -43,6 +47,12 @@ async fn main() -> Result<(), anyhow::Error> {
     let opt_deny_message: StringConfigOption = ConfigOption::new_str_no_default(
         OPT_DENY_MESSAGE,
         "Message to send to a peer if clnrod denies a channel.",
+    )
+    .dynamic();
+    let opt_leak_reason: DefaultBooleanConfigOption = ConfigOption::new_bool_with_default(
+        OPT_LEAK_REASON,
+        false,
+        "If you want to leak the reason for a channel rejection",
     )
     .dynamic();
     let opt_block_mode: DefaultStringConfigOption = ConfigOption::new_str_with_default(
@@ -87,6 +97,7 @@ async fn main() -> Result<(), anyhow::Error> {
         )
         .setconfig_callback(setconfig_callback)
         .option(opt_deny_message)
+        .option(opt_leak_reason)
         .option(opt_block_mode)
         .option(opt_custom_rule)
         .option(opt_ping_length)

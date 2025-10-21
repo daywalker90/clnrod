@@ -67,6 +67,7 @@ impl ClnrodParser {
 #[derive(Clone, Debug)]
 pub struct Config {
     pub deny_message: String,
+    pub leak_reason: bool,
     pub block_mode: BlockMode,
     pub custom_rule: String,
     pub smtp_username: String,
@@ -83,6 +84,7 @@ impl Config {
     pub fn new() -> Config {
         Config {
             deny_message: "CLNROD: Channel rejected by channel acceptor, sorry!".to_string(),
+            leak_reason: false,
             block_mode: BlockMode::Deny,
             custom_rule: String::new(),
             smtp_username: String::new(),
