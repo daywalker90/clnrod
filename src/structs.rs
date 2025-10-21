@@ -50,6 +50,14 @@ impl FromStr for BlockMode {
         }
     }
 }
+impl Display for BlockMode {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        match self {
+            BlockMode::Allow => write!(f, "allow"),
+            BlockMode::Deny => write!(f, "deny"),
+        }
+    }
+}
 
 pub struct ClnrodParser {
     pub pratt_parser: PrattParser<Rule>,
@@ -348,6 +356,15 @@ impl FromStr for NotifyVerbosity {
             "accepted" => Ok(NotifyVerbosity::Accepted),
             "all" => Ok(NotifyVerbosity::All),
             _ => Err(anyhow!("could not parse NotifyVerbosity from {}", s)),
+        }
+    }
+}
+impl Display for NotifyVerbosity {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        match self {
+            NotifyVerbosity::Error => write!(f, "error"),
+            NotifyVerbosity::Accepted => write!(f, "accepted"),
+            NotifyVerbosity::All => write!(f, "all"),
         }
     }
 }
