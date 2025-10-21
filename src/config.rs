@@ -137,7 +137,11 @@ fn check_option(config: &mut Config, name: &str, value: &options::Value) -> Resu
             config.block_mode = BlockMode::from_str(value.as_str().unwrap())?;
         }
         n if n.eq(OPT_DENY_MESSAGE) => {
-            config.deny_message = value.as_str().unwrap().to_string();
+            let deny_message = value.as_str().unwrap().to_string();
+            if deny_message.is_empty() {
+                return Err(anyhow!("{} must not be empty!", OPT_DENY_MESSAGE));
+            }
+            config.deny_message = deny_message;
         }
         n if n.eq(OPT_LEAK_REASON) => {
             config.leak_reason = match value {
