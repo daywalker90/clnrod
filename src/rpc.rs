@@ -2,7 +2,11 @@ use std::{path::Path, str::FromStr};
 
 use anyhow::{anyhow, Context, Error};
 use cln_plugin::Plugin;
-use cln_rpc::primitives::{Amount, PublicKey};
+use cln_rpc::{
+    model::requests::ConnectRequest,
+    primitives::{Amount, PublicKey},
+    ClnRpc,
+};
 use serde_json::json;
 
 use crate::{
@@ -152,7 +156,7 @@ pub async fn clnrod_testping(
             let length = if let Some(pk) = o.get("length") {
                 u16::try_from(pk.as_u64().ok_or_else(|| anyhow!("bad length number"))?)?
             } else {
-                256
+                plugin.state().config.lock().ping_length
             };
             (pubkey_str, count, length)
         }
@@ -178,7 +182,7 @@ pub async fn clnrod_testping(
                     u16::try_from(c.as_u64().ok_or_else(|| anyhow!("bad length number"))?)
                         .context("length out of valid range")?
                 } else {
-                    256
+                    plugin.state().config.lock().ping_length
                 };
                 (pubkey_str, count, length)
             }
@@ -199,9 +203,22 @@ pub async fn clnrod_testping(
     }
     let pubkey = PublicKey::from_str(pubkey_str).context("invalid pubkey")?;
 
+    let rpc_path =
+        Path::new(&plugin.configuration().lightning_dir).join(plugin.configuration().rpc_file);
+    let mut rpc = ClnRpc::new(rpc_path).await?;
+
+    rpc.call_typed(&ConnectRequest {
+        host: None,
+        port: None,
+        id: pubkey.to_string(),
+    })
+    .await?;
+
     let pings = ln_ping(plugin, pubkey, count, length).await?;
     let sum_pings = pings.iter().map(|y| *y as u64).sum::<u64>();
+    let median = pings.iter().nth(pings.len() / 2).unwrap_or(&0);
     Ok(json!({"min":pings.iter().min(),
         "avg":sum_pings/(pings.len() as u64),
+        "median":median,
         "max":pings.iter().max()}))
 }

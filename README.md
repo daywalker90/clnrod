@@ -102,7 +102,7 @@ New rpc methods with this plugin:
 * **clnrod-testmail**
     * send a test mail to check your email config
 * **clnrod-testping** *pubkey* [*count*] [*length*]
-    * measure the time it takes in ms to send a *length* (Default: 256) bytes message to the node with *pubkey* and back. Pings *count* (Default: 3) times. You must connect to the node first!
+    * measure the time it takes in ms to send a *length* (Defaults to ``clnrod-pinglength``) bytes message to the node with *pubkey* and back. Pings *count* (Default: 3) times.
 
 
 ## Blockmode: allow
