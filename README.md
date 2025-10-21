@@ -159,7 +159,7 @@ Variables starting with ``cln_`` query your own gossip, ``amboss_`` the [Amboss]
 * ``amboss_has_website``: if this peer has published a website address on amboss this will be ``true`` otherwise ``false``
 * ``amboss_terminal_web_rank``: the [terminal.lightning](https://terminal.lightning.engineering/) rank pulled from amboss API
 
-Example: ``their_funding_sat >= 1000000 && their_funding_sat <= 50000000 && cln_multi_channel_count==1 && (amboss_has_email==true || amboss_has_nostr==true)`` will accept channels that are between 1000000 and 50000000 sats in size and if there isn't an active/opening channel to this peer already and the peer has either an email or nostr info on amboss
+Example: ``their_funding_sat >= 1000000 && their_funding_sat <= 50000000 && cln_multi_channel_count<=1 && (amboss_has_email==true || amboss_has_nostr==true)`` will accept channels that are between 1000000 and 50000000 sats in size and if there isn't an active/opening channel to this peer already and the peer has either an email or nostr info on amboss
 
 # How to set options
 ``clnrod`` is a dynamic plugin with dynamic options, so you can start it after CLN is already running and modify it's options after the plugin is started. You have two different methods of setting the options:
