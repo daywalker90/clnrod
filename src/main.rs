@@ -3,10 +3,10 @@ use std::time::Duration;
 use anyhow::anyhow;
 use cln_plugin::{
     options::{
-        ConfigOption, DefaultBooleanConfigOption, DefaultStringConfigOption, IntegerConfigOption,
-        StringConfigOption,
+        ConfigOption, DefaultBooleanConfigOption, DefaultIntegerConfigOption,
+        DefaultStringConfigOption, IntegerConfigOption, StringConfigOption,
     },
-    Builder,
+    Builder, RpcMethodBuilder,
 };
 use config::{read_config, setconfig_callback};
 use hooks::{openchannel2_hook, openchannel_hook};
@@ -43,30 +43,42 @@ const OPT_NOTIFY_VERBOSITY: &str = "clnrod-notify-verbosity";
 async fn main() -> Result<(), anyhow::Error> {
     std::env::set_var("CLN_PLUGIN_LOG", "clnrod=debug,info");
     log_panics::init();
+
     let state = PluginState::new();
-    let opt_deny_message: StringConfigOption = ConfigOption::new_str_no_default(
+    let config_defaults = state.config.lock().clone();
+
+    let opt_deny_message: DefaultStringConfigOption = ConfigOption::new_str_with_default(
         OPT_DENY_MESSAGE,
+        &config_defaults.deny_message,
         "Message to send to a peer if clnrod denies a channel.",
     )
     .dynamic();
     let opt_leak_reason: DefaultBooleanConfigOption = ConfigOption::new_bool_with_default(
         OPT_LEAK_REASON,
-        false,
+        config_defaults.leak_reason,
         "If you want to leak the reason for a channel rejection",
     )
     .dynamic();
+
+    let default_block_mode = config_defaults.block_mode.to_string();
     let opt_block_mode: DefaultStringConfigOption = ConfigOption::new_str_with_default(
         OPT_BLOCK_MODE,
-        "deny",
+        &default_block_mode,
         "Use 'allow' list or 'deny' list.",
     )
     .dynamic();
+
     let opt_custom_rule: StringConfigOption =
         ConfigOption::new_str_no_default(OPT_CUSTOM_RULE, "Custom rule matching, see README.md")
             .dynamic();
-    let opt_ping_length: IntegerConfigOption =
-        ConfigOption::new_i64_no_default(OPT_PING_LENGTH, "Length of the ping messages in bytes")
-            .dynamic();
+
+    let opt_ping_length: DefaultIntegerConfigOption = ConfigOption::new_i64_with_default(
+        OPT_PING_LENGTH,
+        config_defaults.ping_length as i64,
+        "Length of the ping messages in bytes",
+    )
+    .dynamic();
+
     let opt_smtp_username: StringConfigOption =
         ConfigOption::new_str_no_default(OPT_SMTP_USERNAME, "Set smtp username").dynamic();
     let opt_smtp_password: StringConfigOption =
@@ -79,21 +91,27 @@ async fn main() -> Result<(), anyhow::Error> {
         ConfigOption::new_str_no_default(OPT_EMAIL_FROM, "Set email_from").dynamic();
     let opt_email_to: StringConfigOption =
         ConfigOption::new_str_no_default(OPT_EMAIL_TO, "Set email_to").dynamic();
+
+    let default_notify_verbosity = config_defaults.notify_verbosity.to_string();
     let opt_notify_verbosity: DefaultStringConfigOption = ConfigOption::new_str_with_default(
         OPT_NOTIFY_VERBOSITY,
-        "all",
+        &default_notify_verbosity,
         "Set the verbosity level of notifications. One of: 'ERROR', 'ACCEPTED', 'ALL'",
     )
     .dynamic();
 
     let confplugin = match Builder::new(tokio::io::stdin(), tokio::io::stdout())
         .rpcmethod("clnrod-reload", "Reloads rules from file.", clnrod_reload)
-        .rpcmethod("clnrod-testrule", "Test custom rule", clnrod_testrule)
+        .rpcmethod_from_builder(
+            RpcMethodBuilder::new("clnrod-testrule", clnrod_testrule)
+                .description("Test custom rule")
+                .usage("pubkey public their_funding_sat rule"),
+        )
         .rpcmethod("clnrod-testmail", "Test mail config", clnrod_testmail)
-        .rpcmethod(
-            "clnrod-testping",
-            "Test the ping to a node",
-            clnrod_testping,
+        .rpcmethod_from_builder(
+            RpcMethodBuilder::new("clnrod-testping", clnrod_testping)
+                .description("Test the ping to a node")
+                .usage("pubkey [count] [length]"),
         )
         .setconfig_callback(setconfig_callback)
         .option(opt_deny_message)
