@@ -177,6 +177,7 @@ You can mix two methods and if you set the same option with different methods, i
 # Options
 ### general
 * ``clnrod-denymessage``: The custom message we will send to a rejected peer, defaults to `CLNROD: Channel rejected by channel acceptor, sorry!`
+* ``clnrod-leakreason``: Boolean option to leak the reason why a channel was rejected, defaults to `false`
 * ``clnrod-blockmode``: Set the preferred block mode to *allow* or *deny*, defaults to *deny* (with no config clnrod accepts all channels, see Documentation)
 * ``clnrod-customrule``: Set the custom rule for accepting channels, see Documentation, defaults to none
 * ``clnrod-pinglength``: Set the length of the ping message for the custom rule check. Defaults to `256` bytes

@@ -184,6 +184,17 @@ def test_clnrod_custom_rule(node_factory, bitcoind, get_plugin):  # noqa: F811
         "Offending comparisons: `cln_multi_channel_count <= 1 -> actual: 2`"
     )
 
+    l1.rpc.setconfig("clnrod-leakreason", True)
+
+    with pytest.raises(
+        RpcError, match="No thanks Reason: cln_multi_channel_count <= 1 -> actual: 2"
+    ):
+        l2.rpc.fundchannel(
+            l1.info["id"] + "@localhost:" + str(l1.port),
+            1_000_002,
+            mindepth=1,
+        )
+
 
 def test_clnrod_custom_allow(node_factory, get_plugin):  # noqa: F811
     l1, l2 = node_factory.get_nodes(
@@ -341,6 +352,16 @@ def test_clnrod_allowlist(node_factory, get_plugin):  # noqa: F811
             announce=True,
         )
 
+    l1.rpc.setconfig("clnrod-leakreason", True)
+
+    with pytest.raises(RpcError, match="No thanks Reason: not whitelisted"):
+        l2.rpc.fundchannel(
+            l1.info["id"] + "@localhost:" + str(l1.port),
+            1_000_000,
+            mindepth=1,
+            announce=True,
+        )
+
     l1.rpc.call("clnrod-reload")
 
     l2.rpc.fundchannel(
@@ -393,6 +414,16 @@ def test_clnrod_denylist(node_factory, bitcoind, get_plugin):  # noqa: F811
     l1.rpc.call("clnrod-reload")
 
     with pytest.raises(RpcError, match="No thanks"):
+        l2.rpc.fundchannel(
+            l1.info["id"] + "@localhost:" + str(l1.port),
+            1_000_000,
+            mindepth=1,
+            announce=True,
+        )
+
+    l1.rpc.setconfig("clnrod-leakreason", True)
+
+    with pytest.raises(RpcError, match="No thanks Reason: blacklisted"):
         l2.rpc.fundchannel(
             l1.info["id"] + "@localhost:" + str(l1.port),
             1_000_000,

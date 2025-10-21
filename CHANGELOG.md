@@ -4,6 +4,7 @@
 
 ### Added
 - new custom rule variable ``cln_multi_channel_count`` to restrict the number of multiple channels per peer
+- new boolean option to leak the reason in the reject message: ``clnrod-leakreason``, defaults to `false`
 
 ### Fixed
 - cache invalidation bug: multiple quick opening attempts with different opening specific data like ``their_funding_sat`` would use the first value from cache

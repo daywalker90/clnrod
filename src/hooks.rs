@@ -27,7 +27,7 @@ pub async fn openchannel_hook(
                 NotifyVerbosity::Error,
             )
             .await;
-            return Ok(create_reject_response(&config));
+            return Ok(create_reject_response(&config, "internal error"));
         }
     };
     Ok(release_hook(plugin.clone(), pubkey, their_funding_msat, channel_flags).await)
@@ -76,7 +76,7 @@ pub async fn openchannel2_hook(
                 NotifyVerbosity::Error,
             )
             .await;
-            return Ok(create_reject_response(&config));
+            return Ok(create_reject_response(&config, "internal error"));
         }
     };
     Ok(release_hook(plugin.clone(), pubkey, their_funding_msat, channel_flags).await)
@@ -142,7 +142,7 @@ async fn release_hook(
                     NotifyVerbosity::Error,
                 )
                 .await;
-                return create_reject_response(&config);
+                return create_reject_response(&config, "internal error");
             }
         };
         let parser = ClnrodParser::new();
@@ -157,7 +157,7 @@ async fn release_hook(
                     NotifyVerbosity::Error,
                 )
                 .await;
-                return create_reject_response(&config);
+                return create_reject_response(&config, "internal error");
             }
         }
     } else {
@@ -205,7 +205,7 @@ async fn release_hook(
                         NotifyVerbosity::All,
                     )
                     .await;
-                    create_reject_response(&config)
+                    create_reject_response(&config, &reject_reason)
                 }
             } else {
                 notify(
@@ -216,7 +216,7 @@ async fn release_hook(
                     NotifyVerbosity::All,
                 )
                 .await;
-                create_reject_response(&config)
+                create_reject_response(&config, "not whitelisted")
             }
         }
         BlockMode::Deny => {
@@ -229,7 +229,7 @@ async fn release_hook(
                     NotifyVerbosity::All,
                 )
                 .await;
-                create_reject_response(&config)
+                create_reject_response(&config, "blacklisted")
             } else if let Some(cu) = allowed_custom {
                 if cu.0 {
                     notify(
@@ -259,7 +259,7 @@ async fn release_hook(
                         NotifyVerbosity::All,
                     )
                     .await;
-                    create_reject_response(&config)
+                    create_reject_response(&config, &reject_reason)
                 }
             } else {
                 notify(
@@ -282,9 +282,10 @@ fn parse_channel_flags(channel_flags: u64) -> Result<ChannelFlags, Error> {
     Ok(ChannelFlags { public })
 }
 
-fn create_reject_response(config: &Config) -> serde_json::Value {
-    if config.deny_message.is_empty() {
-        json!({"result": "reject"})
+fn create_reject_response(config: &Config, reason: &str) -> serde_json::Value {
+    if config.leak_reason {
+        json!({"result": "reject",
+        "error_message": format!("{} Reason: {}", config.deny_message, reason)})
     } else {
         json!({"result": "reject", "error_message": config.deny_message})
     }

@@ -20,8 +20,8 @@ use crate::{
 };
 use crate::{
     OPT_BLOCK_MODE, OPT_CUSTOM_RULE, OPT_DENY_MESSAGE, OPT_EMAIL_FROM, OPT_EMAIL_TO,
-    OPT_NOTIFY_VERBOSITY, OPT_PING_LENGTH, OPT_SMTP_PASSWORD, OPT_SMTP_PORT, OPT_SMTP_SERVER,
-    OPT_SMTP_USERNAME, PLUGIN_NAME,
+    OPT_LEAK_REASON, OPT_NOTIFY_VERBOSITY, OPT_PING_LENGTH, OPT_SMTP_PASSWORD, OPT_SMTP_PORT,
+    OPT_SMTP_SERVER, OPT_SMTP_USERNAME, PLUGIN_NAME,
 };
 
 pub async fn read_config(
@@ -46,7 +46,6 @@ pub async fn read_config(
     let mut config = state.config.lock();
     activate_mail(&mut config);
 
-    log::info!("cache cleared!");
     Ok(())
 }
 
@@ -96,6 +95,9 @@ fn get_startup_options(
     if let Some(dm) = plugin.option_str(OPT_DENY_MESSAGE)? {
         check_option(&mut config, OPT_DENY_MESSAGE, &dm)?;
     };
+    if let Some(lr) = plugin.option_str(OPT_LEAK_REASON)? {
+        check_option(&mut config, OPT_LEAK_REASON, &lr)?;
+    };
     if let Some(cr) = plugin.option_str(OPT_CUSTOM_RULE)? {
         check_option(&mut config, OPT_CUSTOM_RULE, &cr)?;
     };
@@ -136,6 +138,13 @@ fn check_option(config: &mut Config, name: &str, value: &options::Value) -> Resu
         }
         n if n.eq(OPT_DENY_MESSAGE) => {
             config.deny_message = value.as_str().unwrap().to_string();
+        }
+        n if n.eq(OPT_LEAK_REASON) => {
+            config.leak_reason = match value {
+                options::Value::String(s) => s.parse()?,
+                options::Value::Boolean(b) => *b,
+                _ => return Err(anyhow!("{} must be a boolean", OPT_LEAK_REASON)),
+            }
         }
         n if n.eq(OPT_CUSTOM_RULE) => {
             parse_rule(value.as_str().unwrap())?;
@@ -202,6 +211,11 @@ fn parse_option(name: &str, value: &serde_json::Value) -> Result<options::Value,
             }
             Err(anyhow!("{} is not a valid integer!", name))
         }
+        n if n.eq(OPT_LEAK_REASON) => match value {
+            serde_json::Value::String(s) => Ok(options::Value::Boolean(s.parse()?)),
+            serde_json::Value::Bool(b) => Ok(options::Value::Boolean(*b)),
+            _ => return Err(anyhow!("{} must be a boolean", name)),
+        },
         _ => {
             if value.is_string() {
                 Ok(options::Value::String(value.as_str().unwrap().to_string()))
