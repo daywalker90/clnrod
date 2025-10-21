@@ -9,7 +9,6 @@ use crate::{
 use anyhow::{anyhow, Error};
 use cln_plugin::Plugin;
 use cln_rpc::primitives::{Amount, PublicKey};
-use log::debug;
 use serde_json::json;
 
 pub async fn openchannel_hook(
@@ -120,7 +119,7 @@ async fn release_hook(
     let config = plugin.state().config.lock().clone();
 
     let list_matched = pubkey_list.contains(&pubkey);
-    debug!("release_hook: start, {}", list_matched);
+    log::debug!("release_hook: start, {}", list_matched);
 
     let allowed_custom = if !list_matched && !config.custom_rule.is_empty() {
         let data = match collect_data(
@@ -164,7 +163,7 @@ async fn release_hook(
     } else {
         None
     };
-    debug!("release_hook: done, {} {:?}", list_matched, allowed_custom);
+    log::debug!("release_hook: done, {} {:?}", list_matched, allowed_custom);
     match config.block_mode {
         BlockMode::Allow => {
             if list_matched {

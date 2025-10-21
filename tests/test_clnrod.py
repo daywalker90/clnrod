@@ -34,7 +34,7 @@ def test_clnrod_custom_rule(node_factory, bitcoind, get_plugin):  # noqa: F811
         opts=[
             {
                 "plugin": get_plugin,
-                "clnrod-customrule": "public == true && their_funding_sat>100000 && cln_channel_count>=1",
+                "clnrod-customrule": "public == true && their_funding_sat>100000 && cln_channel_count>=1 && cln_multi_channel_count <= 1",
                 "clnrod-denymessage": "No thanks",
             },
             {},
@@ -146,13 +146,13 @@ def test_clnrod_custom_rule(node_factory, bitcoind, get_plugin):  # noqa: F811
         {
             "public": True,
             "pubkey": l2.info["id"],
-            "their_funding_sat": 50_000,
+            "their_funding_sat": 50_001,
             "rule": "cln_channel_count>=1 && (public==false || their_funding_sat>100000)",
         },
     )
     assert (
         rule7["reject_reason"]
-        == "public == 0 -> actual: 1, their_funding_sat > 100000 -> actual: 50000"
+        == "public == 0 -> actual: 1, their_funding_sat > 100000 -> actual: 50001"
     )
 
     rule8 = l1.rpc.call(
@@ -160,11 +160,29 @@ def test_clnrod_custom_rule(node_factory, bitcoind, get_plugin):  # noqa: F811
         {
             "public": True,
             "pubkey": l2.info["id"],
-            "their_funding_sat": 50_000,
+            "their_funding_sat": 150_002,
             "rule": "cln_channel_count>=1 && public==0",
         },
     )
     assert rule8["reject_reason"] == "public == 0 -> actual: 1"
+
+    chan = l2.rpc.fundchannel(
+        l1.info["id"] + "@localhost:" + str(l1.port),
+        1_000_001,
+        mindepth=1,
+    )
+    bitcoind.generate_block(6, wait_for_mempool=chan["txid"])
+    sync_blockheight(bitcoind, [l1, l2])
+
+    with pytest.raises(RpcError, match="No thanks"):
+        l2.rpc.fundchannel(
+            l1.info["id"] + "@localhost:" + str(l1.port),
+            1_000_002,
+            mindepth=1,
+        )
+    assert l1.daemon.is_in_log(
+        "Offending comparisons: `cln_multi_channel_count <= 1 -> actual: 2`"
+    )
 
 
 def test_clnrod_custom_allow(node_factory, get_plugin):  # noqa: F811

@@ -146,13 +146,16 @@ fn evaluate_value(pair: &Pair<Rule>, variables: &PeerData) -> Result<u64, Error>
         Rule::INTEGER => Ok(pair.as_str().parse::<u64>().unwrap()),
         Rule::VARIABLE => match pair.as_str() {
             p if p.eq_ignore_ascii_case("their_funding_sat") => {
-                Ok(variables.peerinfo.their_funding_sat)
+                Ok(variables.openinginfo.their_funding_sat)
             }
             p if p.eq_ignore_ascii_case("cln_node_capacity_sat") => {
                 Ok(variables.peerinfo.node_capacity_sat.unwrap())
             }
             p if p.eq_ignore_ascii_case("cln_channel_count") => {
                 Ok(variables.peerinfo.channel_count.unwrap())
+            }
+            p if p.eq_ignore_ascii_case("cln_multi_channel_count") => {
+                Ok(variables.openinginfo.multi_channel_count)
             }
             p if p.eq_ignore_ascii_case("cln_has_clearnet") => {
                 Ok(if variables.peerinfo.has_clearnet.unwrap() {
@@ -176,7 +179,7 @@ fn evaluate_value(pair: &Pair<Rule>, variables: &PeerData) -> Result<u64, Error>
                 })
             }
             p if p.eq_ignore_ascii_case("public") => {
-                Ok(if variables.peerinfo.channel_flags.public {
+                Ok(if variables.openinginfo.channel_flags.public {
                     1
                 } else {
                     0

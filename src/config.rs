@@ -2,7 +2,6 @@ use anyhow::{anyhow, Context, Error};
 use cln_plugin::{options, ConfiguredPlugin, Plugin};
 use cln_rpc::primitives::PublicKey;
 use cln_rpc::RpcError;
-use log::info;
 use parking_lot::Mutex;
 use serde_json::json;
 
@@ -47,7 +46,7 @@ pub async fn read_config(
     let mut config = state.config.lock();
     activate_mail(&mut config);
 
-    info!("cache cleared!");
+    log::info!("cache cleared!");
     Ok(())
 }
 
@@ -77,10 +76,10 @@ pub async fn read_pubkey_list(
     let mut pubkey_list = pubkey_list.lock();
 
     let removed = pubkey_list.difference(&new_pubkey_list).count();
-    info!("Reload: Removed {} peers", removed);
+    log::info!("Reload: Removed {} peers", removed);
 
     let added = new_pubkey_list.difference(&pubkey_list).count();
-    info!("Reload: Added {} peers", added);
+    log::info!("Reload: Added {} peers", added);
 
     *pubkey_list = new_pubkey_list;
     Ok((removed, added))
@@ -125,7 +124,7 @@ fn get_startup_options(
         check_option(&mut config, OPT_NOTIFY_VERBOSITY, &nv)?;
     };
 
-    info!("all options valid!");
+    log::info!("all options valid!");
 
     Ok(())
 }
@@ -268,9 +267,9 @@ fn activate_mail(config: &mut Config) {
         && !config.email_from.is_empty()
         && !config.email_to.is_empty()
     {
-        info!("Will try to send notifications via email");
+        log::info!("Will try to send notifications via email");
         config.send_mail = true;
     } else {
-        info!("Insufficient config for email notifications. Will not send emails");
+        log::info!("Insufficient config for email notifications. Will not send emails");
     }
 }
