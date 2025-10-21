@@ -16,7 +16,7 @@
 - all ping measurements were subtracted by a rpc delay amount but after pings started working properly in 25.09 it turns out this would lead to unrealistically low pings, so i removed that and as a result pings might be slightly higher now
 
 ### Fixed
-- cache invalidation bug: multiple quick (within 1 hour) opening attempts with different opening specific data like ``their_funding_sat`` would use the first value from cache
+- cache invalidation bug: multiple quick (within 1 hour) opening attempts from the same peer with different opening specific data (e.g. different ``their_funding_sat``) would use the oldest value from cache
 
 ## [0.4.3] - 2025-10-16
 
