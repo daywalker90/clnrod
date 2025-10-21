@@ -5,6 +5,8 @@
 ### Added
 - new custom rule variable ``cln_multi_channel_count`` to restrict the number of multiple channels per peer
 - new boolean option to leak the reason in the reject message: ``clnrod-leakreason``, defaults to `false`
+- method usage returned by ``lightning-cli help``
+- defaults for options returned by ``lightning-cli listconfigs``
 
 ### Changed
 - empty ``clnrod-denymessage`` no longer allowed, please let your peer know it's not a lightning bug
