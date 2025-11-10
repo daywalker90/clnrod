@@ -15,7 +15,8 @@ use crate::{
     notify::notify,
     parser::{evaluate_rule, parse_rule},
     structs::{BlockMode, ChannelFlags, ClnrodParser, NotifyVerbosity, PluginState},
-    OPT_BLOCK_MODE, PLUGIN_NAME,
+    OPT_BLOCK_MODE,
+    PLUGIN_NAME,
 };
 
 pub async fn clnrod_reload(

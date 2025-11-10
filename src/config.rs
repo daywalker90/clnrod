@@ -1,27 +1,37 @@
+use std::{
+    collections::HashSet,
+    path::{Path, PathBuf},
+    str::FromStr,
+    sync::Arc,
+};
+
 use anyhow::{anyhow, Context, Error};
 use cln_plugin::{options, ConfiguredPlugin, Plugin};
-use cln_rpc::primitives::PublicKey;
-use cln_rpc::RpcError;
+use cln_rpc::{primitives::PublicKey, RpcError};
 use parking_lot::Mutex;
 use serde_json::json;
-
-use std::collections::HashSet;
-use std::path::PathBuf;
-use std::sync::Arc;
-use std::{path::Path, str::FromStr};
-use tokio::fs::{self, File};
-use tokio::io::{AsyncBufReadExt, BufReader};
-
-use crate::parser::parse_rule;
-use crate::structs::NotifyVerbosity;
-use crate::{
-    structs::{BlockMode, Config},
-    PluginState,
+use tokio::{
+    fs::{self, File},
+    io::{AsyncBufReadExt, BufReader},
 };
+
 use crate::{
-    OPT_BLOCK_MODE, OPT_CUSTOM_RULE, OPT_DENY_MESSAGE, OPT_EMAIL_FROM, OPT_EMAIL_TO,
-    OPT_LEAK_REASON, OPT_NOTIFY_VERBOSITY, OPT_PING_LENGTH, OPT_SMTP_PASSWORD, OPT_SMTP_PORT,
-    OPT_SMTP_SERVER, OPT_SMTP_USERNAME, PLUGIN_NAME,
+    parser::parse_rule,
+    structs::{BlockMode, Config, NotifyVerbosity},
+    PluginState,
+    OPT_BLOCK_MODE,
+    OPT_CUSTOM_RULE,
+    OPT_DENY_MESSAGE,
+    OPT_EMAIL_FROM,
+    OPT_EMAIL_TO,
+    OPT_LEAK_REASON,
+    OPT_NOTIFY_VERBOSITY,
+    OPT_PING_LENGTH,
+    OPT_SMTP_PASSWORD,
+    OPT_SMTP_PORT,
+    OPT_SMTP_SERVER,
+    OPT_SMTP_USERNAME,
+    PLUGIN_NAME,
 };
 
 pub async fn read_config(
