@@ -498,4 +498,5 @@ def test_email_activation(node_factory, get_plugin):  # noqa: F811
             "clnrod-email-to": "hf@google.com",
         }
     )
+    l1.daemon.logsearch_start = 0
     l1.daemon.wait_for_log(r"plugin-clnrod: Will try to send notifications via email")
