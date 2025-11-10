@@ -1,15 +1,16 @@
 use std::str::FromStr;
 
+use anyhow::{anyhow, Error};
+use cln_plugin::Plugin;
+use cln_rpc::primitives::{Amount, PublicKey};
+use serde_json::json;
+
 use crate::{
     collect::collect_data,
     notify::notify,
     parser::{evaluate_rule, parse_rule},
     structs::{BlockMode, ChannelFlags, ClnrodParser, Config, NotifyVerbosity, PluginState},
 };
-use anyhow::{anyhow, Error};
-use cln_plugin::Plugin;
-use cln_rpc::primitives::{Amount, PublicKey};
-use serde_json::json;
 
 pub async fn openchannel_hook(
     plugin: Plugin<PluginState>,

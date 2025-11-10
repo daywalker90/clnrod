@@ -3,10 +3,15 @@ use std::time::Duration;
 use anyhow::anyhow;
 use cln_plugin::{
     options::{
-        ConfigOption, DefaultBooleanConfigOption, DefaultIntegerConfigOption,
-        DefaultStringConfigOption, IntegerConfigOption, StringConfigOption,
+        ConfigOption,
+        DefaultBooleanConfigOption,
+        DefaultIntegerConfigOption,
+        DefaultStringConfigOption,
+        IntegerConfigOption,
+        StringConfigOption,
     },
-    Builder, RpcMethodBuilder,
+    Builder,
+    RpcMethodBuilder,
 };
 use config::{read_config, setconfig_callback};
 use hooks::{openchannel2_hook, openchannel_hook};

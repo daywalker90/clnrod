@@ -1,17 +1,18 @@
+#[cfg(test)]
+use std::{println as warn, println as debug}; // Workaround to use prinltn! for logging in tests.
+
 use anyhow::{anyhow, Error};
 #[cfg(not(test))]
 use log::{debug, warn}; // Use log crate when building application
-
 use pest::{
     iterators::{Pair, Pairs},
     Parser,
 };
-#[cfg(test)]
-use std::{println as warn, println as debug}; // Workaround to use prinltn! for logging in tests.
 
 use crate::{
     structs::{ClnrodParser, PeerData},
-    Rule, RulesParser,
+    Rule,
+    RulesParser,
 };
 
 pub fn parse_rule(rule: &str) -> Result<Pairs<'_, Rule>, Error> {

@@ -9,7 +9,10 @@ use lettre::{
         authentication::Credentials,
         client::{Tls, TlsParameters},
     },
-    AsyncSmtpTransport, AsyncTransport, Message, Tokio1Executor,
+    AsyncSmtpTransport,
+    AsyncTransport,
+    Message,
+    Tokio1Executor,
 };
 
 use crate::structs::{Config, NotifyVerbosity, PluginState};

@@ -20,8 +20,15 @@ use tokio::time::{self, timeout};
 use crate::{
     notify::notify,
     structs::{
-        AmbossResponse, ChannelFlags, NotifyVerbosity, OneMl, OpeningInfo, PeerData, PeerDataCache,
-        PeerInfo, PluginState,
+        AmbossResponse,
+        ChannelFlags,
+        NotifyVerbosity,
+        OneMl,
+        OpeningInfo,
+        PeerData,
+        PeerDataCache,
+        PeerInfo,
+        PluginState,
     },
 };
 
