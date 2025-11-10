@@ -56,7 +56,7 @@ def test_clnrod_custom_rule(node_factory, bitcoind, get_plugin):  # noqa: F811
             mindepth=1,
             announce=False,
         )
-    assert l1.daemon.is_in_log("Offending comparisons: `public == 1 -> actual: 0`")
+    l1.daemon.wait_for_log(r"Offending comparisons: `public == 1 -> actual: 0`")
 
     rule2 = l1.rpc.call(
         "clnrod-testrule",
@@ -180,8 +180,8 @@ def test_clnrod_custom_rule(node_factory, bitcoind, get_plugin):  # noqa: F811
             1_000_002,
             mindepth=1,
         )
-    assert l1.daemon.is_in_log(
-        "Offending comparisons: `cln_multi_channel_count <= 1 -> actual: 2`"
+    l1.daemon.wait_for_log(
+        r"Offending comparisons: `cln_multi_channel_count <= 1 -> actual: 2`"
     )
 
     l1.rpc.setconfig("clnrod-leakreason", True)
@@ -498,8 +498,4 @@ def test_email_activation(node_factory, get_plugin):  # noqa: F811
             "clnrod-email-to": "hf@google.com",
         }
     )
-    wait_for(
-        lambda: l1.daemon.is_in_log(
-            "plugin-clnrod: Will try to send notifications via email"
-        )
-    )
+    l1.daemon.wait_for_log(r"plugin-clnrod: Will try to send notifications via email")
