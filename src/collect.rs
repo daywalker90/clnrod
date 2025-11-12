@@ -242,7 +242,10 @@ async fn get_peer_data(
     let mut list_peers_rpc = ClnRpc::new(rpc_path).await?;
 
     let list_peers = list_peers_rpc
-        .call_typed(&ListpeerchannelsRequest { id: Some(pubkey) })
+        .call_typed(&ListpeerchannelsRequest {
+            id: Some(pubkey),
+            short_channel_id: None,
+        })
         .await?
         .channels;
 
