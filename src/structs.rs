@@ -1,6 +1,6 @@
 use std::{
     collections::{HashMap, HashSet},
-    fmt::{self, Display, Formatter},
+    fmt::{self, Display, Formatter, Write as _},
     str::FromStr,
     sync::Arc,
 };
@@ -46,7 +46,7 @@ impl FromStr for BlockMode {
         match s.to_lowercase().as_str() {
             "allow" => Ok(BlockMode::Allow),
             "deny" => Ok(BlockMode::Deny),
-            _ => Err(anyhow!("could not parse BlockMode from {}", s)),
+            _ => Err(anyhow!("could not parse BlockMode from {s}")),
         }
     }
 }
@@ -122,91 +122,96 @@ impl Display for PeerDataCache {
             self.peer_data.openinginfo.channel_flags.public
         );
         if let Some(p) = self.peer_data.ping {
-            result.push_str(&format!("\nping: {}", p));
+            write!(result, "\nping: {p}")?;
         }
         if let Some(c) = self.peer_data.peerinfo.node_capacity_sat {
-            result.push_str(&format!("\ncln_node_capacity_sat: {}", c))
+            write!(result, "\ncln_node_capacity_sat: {c}")?;
         }
         if let Some(c) = self.peer_data.peerinfo.channel_count {
-            result.push_str(&format!("\ncln_channel_count: {}", c))
+            write!(result, "\ncln_channel_count: {c}")?;
         }
-        result.push_str(&format!(
+        write!(
+            result,
             "\ncln_multi_channel_count: {}",
             self.peer_data.openinginfo.multi_channel_count
-        ));
+        )?;
         if let Some(c) = self.peer_data.peerinfo.has_clearnet {
-            result.push_str(&format!("\ncln_has_clearnet: {}", c))
+            write!(result, "\ncln_has_clearnet: {c}")?;
         }
         if let Some(c) = self.peer_data.peerinfo.has_tor {
-            result.push_str(&format!("\ncln_has_tor: {}", c))
+            write!(result, "\ncln_has_tor: {c}")?;
         }
         if let Some(c) = self.peer_data.peerinfo.anchor_support {
-            result.push_str(&format!("\ncln_anchor_support: {}", c))
+            write!(result, "\ncln_anchor_support: {c}")?;
         }
 
         if let Some(oneml_data) = &self.peer_data.oneml_data {
-            result.push_str(&format!(
+            write!(
+                result,
                 "\noneml_capacity: {}",
                 oneml_data.capacity.unwrap_or(u64::MAX)
-            ));
-            result.push_str(&format!(
+            )?;
+            write!(
+                result,
                 "\noneml_channelcount: {}",
                 oneml_data.channelcount.unwrap_or(u64::MAX)
-            ));
-            result.push_str(&format!(
+            )?;
+            write!(
+                result,
                 "\noneml_age: {}",
                 oneml_data.age.unwrap_or(u64::MAX)
-            ));
-            result.push_str(&format!(
+            )?;
+            write!(
+                result,
                 "\noneml_growth: {}",
                 oneml_data.growth.unwrap_or(u64::MAX)
-            ));
-            result.push_str(&format!(
+            )?;
+            write!(
+                result,
                 "\noneml_availability: {}",
                 oneml_data.availability.unwrap_or(u64::MAX)
-            ));
+            )?;
         }
 
         if let Some(amboss_data) = &self.peer_data.amboss_data {
             if let Some(amboss_metrics) = &amboss_data.get_node.graph_info.metrics {
-                result.push_str(&format!(
+                write!(
+                    result,
                     "\namboss_capacity_rank: {}",
                     amboss_metrics.capacity_rank
-                ));
-                result.push_str(&format!(
+                )?;
+                write!(
+                    result,
                     "\namboss_channels_rank: {}",
                     amboss_metrics.channels_rank
-                ));
+                )?;
             } else {
                 result.push_str("\namboss_capacity_rank: None\namboss_channels_rank: None");
             }
             if let Some(amboss_socials) = &amboss_data.get_node.socials.info {
                 if let Some(c) = &amboss_socials.email {
-                    result.push_str(&format!("\namboss_has_email: {}", c))
+                    write!(result, "\namboss_has_email: {c}")?;
                 }
                 if let Some(c) = &amboss_socials.linkedin {
-                    result.push_str(&format!("\namboss_has_linkedin: {}", c))
+                    write!(result, "\namboss_has_linkedin: {c}")?;
                 }
                 if let Some(c) = &amboss_socials.nostr {
-                    result.push_str(&format!("\namboss_has_nostr: {}", c))
+                    write!(result, "\namboss_has_nostr: {c}")?;
                 }
                 if let Some(c) = &amboss_socials.telegram {
-                    result.push_str(&format!("\namboss_has_telegram: {}", c))
+                    write!(result, "\namboss_has_telegram: {c}")?;
                 }
                 if let Some(c) = &amboss_socials.twitter {
-                    result.push_str(&format!("\namboss_has_twitter: {}", c))
+                    write!(result, "\namboss_has_twitter: {c}")?;
                 }
                 if let Some(c) = &amboss_socials.website {
-                    result.push_str(&format!("\namboss_has_website: {}", c))
+                    write!(result, "\namboss_has_website: {c}")?;
                 }
             } else {
                 result.push_str("\nNo socials found on amboss.");
             }
             if let Some(amboss_ll) = &amboss_data.get_node.socials.lightning_labs.terminal_web {
-                result.push_str(&format!(
-                    "\namboss_terminal_web_rank: {}",
-                    amboss_ll.position
-                ))
+                write!(result, "\namboss_terminal_web_rank: {}", amboss_ll.position)?;
             } else {
                 result.push_str("\nNo Terminal Web data found on amboss.");
             }
@@ -214,7 +219,7 @@ impl Display for PeerDataCache {
                 result.push_str("\nAmboss does not have any data for this node!");
             }
         }
-        write!(f, "{}", result)
+        write!(f, "{result}")
     }
 }
 
@@ -355,7 +360,7 @@ impl FromStr for NotifyVerbosity {
             "error" => Ok(NotifyVerbosity::Error),
             "accepted" => Ok(NotifyVerbosity::Accepted),
             "all" => Ok(NotifyVerbosity::All),
-            _ => Err(anyhow!("could not parse NotifyVerbosity from {}", s)),
+            _ => Err(anyhow!("could not parse NotifyVerbosity from {s}")),
         }
     }
 }

@@ -16,7 +16,7 @@ pub async fn refresh_alias_cache(plugin: Plugin<PluginState>) -> Result<(), anyh
 
     let listnodes = rpc.call_typed(&ListnodesRequest { id: None }).await?.nodes;
     let mut alias_cache = plugin.state().alias_cache.lock();
-    for node in listnodes.into_iter() {
+    for node in listnodes {
         if let Some(a) = node.alias {
             alias_cache.insert(node.nodeid, a);
         }

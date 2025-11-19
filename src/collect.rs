@@ -54,12 +54,12 @@ async fn get_oneml_data(
 
     let response = match network {
         name if name.eq_ignore_ascii_case("bitcoin") => {
-            reqwest::get(format!("https://1ml.com/node/{}/json", pubkey)).await?
+            reqwest::get(format!("https://1ml.com/node/{pubkey}/json")).await?
         }
         name if name.eq_ignore_ascii_case("testnet") => {
-            reqwest::get(format!("https://1ml.com/testnet/node/{}/json", pubkey)).await?
+            reqwest::get(format!("https://1ml.com/testnet/node/{pubkey}/json")).await?
         }
-        _ => return Err(anyhow!("network not supported for 1ML: {}", network)),
+        _ => return Err(anyhow!("network not supported for 1ML: {network}")),
     };
 
     *last_api_call = SystemTime::now()
@@ -148,7 +148,7 @@ async fn get_amboss_data(
                 .send()
                 .await?
         }
-        _ => return Err(anyhow!("network not supported for Amboss: {}", network)),
+        _ => return Err(anyhow!("network not supported for Amboss: {network}")),
     };
 
     *last_api_call = SystemTime::now()
@@ -159,7 +159,7 @@ async fn get_amboss_data(
 
     if response.status().is_success() {
         let json_response: serde_json::Value = response.json().await?;
-        log::debug!("{:?}", json_response);
+        log::debug!("{json_response:?}");
         let amboss_response: AmbossResponse = serde_json::from_value(json_response)?;
 
         Ok(amboss_response)
@@ -194,10 +194,10 @@ async fn get_gossip_data(rpc_path: PathBuf, pubkey: PublicKey) -> Result<PeerInf
 
     let list_nodes = list_node_task.await??.nodes;
     let list_node = if let Some(node) = list_nodes.first() {
-        log::debug!("{:?}", node);
+        log::debug!("{node:?}");
         node
     } else {
-        return Err(anyhow!("no node found for {}", pubkey));
+        return Err(anyhow!("no node found for {pubkey}"));
     };
     let list_channels = list_channels_task.await??.channels;
 
@@ -250,7 +250,7 @@ async fn get_peer_data(
         .channels;
 
     let mut multi_channel_count = 1;
-    for peer in list_peers.into_iter() {
+    for peer in list_peers {
         if peer.state == ChannelState::CHANNELD_NORMAL
             || peer.state == ChannelState::CHANNELD_AWAITING_LOCKIN
             || peer.state == ChannelState::CHANNELD_AWAITING_SPLICE
@@ -260,7 +260,7 @@ async fn get_peer_data(
             || peer.state == ChannelState::DUALOPEND_OPEN_INIT
             || peer.state == ChannelState::OPENINGD
         {
-            multi_channel_count += 1
+            multi_channel_count += 1;
         }
     }
     log::debug!(
@@ -333,14 +333,16 @@ pub async fn collect_data(
                 peer_data.ping = cache.peer_data.ping;
                 peer_data.peerinfo = cache.peer_data.peerinfo;
                 peer_data.oneml_data = cache.peer_data.oneml_data;
-                peer_data.amboss_data = cache.peer_data.amboss_data.clone();
+                peer_data
+                    .amboss_data
+                    .clone_from(&cache.peer_data.amboss_data);
             }
         }
     }
 
     let network = plugin.configuration().network;
 
-    log::debug!("collect_data: custom_rule: {}", custom_rule);
+    log::debug!("collect_data: custom_rule: {custom_rule}");
     let ping_task = if !cache_hit && custom_rule.to_ascii_lowercase().contains("ping") {
         let plugin_ping = plugin.clone();
         Some(tokio::spawn(async move {
@@ -396,24 +398,25 @@ pub async fn collect_data(
 
     if let Some(p) = ping_task {
         let pings = p.await??;
-        peer_data.ping =
-            Some((pings.iter().map(|y| *y as usize).sum::<usize>() / pings.len()) as u16)
-    };
+        peer_data.ping = Some(u16::try_from(
+            pings.iter().map(|y| *y as usize).sum::<usize>() / pings.len(),
+        )?);
+    }
     log::debug!("collect_data: ping: {:?}", peer_data.ping);
 
     if let Some(gdata) = gossip_task {
         peer_data.peerinfo = gdata.await??;
-    };
+    }
     log::debug!("collect_data: peerinfo: {:?}", peer_data.peerinfo);
 
     if let Some(ad) = amboss_task {
-        peer_data.amboss_data = Some(ad.await??.data)
-    };
+        peer_data.amboss_data = Some(ad.await??.data);
+    }
     log::debug!("collect_data: amboss_data: {:?}", peer_data.amboss_data);
 
     if let Some(ml) = oneml_task {
-        peer_data.oneml_data = Some(ml.await??)
-    };
+        peer_data.oneml_data = Some(ml.await??);
+    }
     log::debug!("collect_data: oneml_data: {:?}", peer_data.oneml_data);
 
     let mut cache = plugin.state().peerdata_cache.lock();
@@ -432,9 +435,9 @@ fn check_feature(hex: &str, check_bits: Vec<u16>) -> Result<bool, Error> {
     let mut bits = Vec::new();
     for hex_char in hex.chars() {
         let binary_string = match hex_char.to_digit(16) {
-            Some(n) => format!("{:04b}", n),
+            Some(n) => format!("{n:04b}"),
             None => {
-                return Err(anyhow!("Invalid hexadecimal character: {}", hex_char));
+                return Err(anyhow!("Invalid hexadecimal character: {hex_char}"));
             }
         };
         for bit in binary_string.chars() {
@@ -447,7 +450,7 @@ fn check_feature(hex: &str, check_bits: Vec<u16>) -> Result<bool, Error> {
         let index = bits.len().checked_sub(1 + bit as usize);
         match index.and_then(|i| bits.get(i)) {
             Some(&b) => {
-                log::debug!("found bit {}: {}", bit, b);
+                log::debug!("found bit {bit}: {b}");
                 result = result || b;
             }
             None => {
@@ -474,7 +477,7 @@ pub async fn ln_ping(
         c += 1;
         let now = Instant::now();
         let timeout_result = match timeout(
-            Duration::from_millis(timeout_ms as u64),
+            Duration::from_millis(u64::from(timeout_ms)),
             rpc.call_typed(&PingRequest {
                 len: Some(ping_length),
                 pongbytes: Some(ping_length),
@@ -490,10 +493,9 @@ pub async fn ln_ping(
                     &plugin,
                     "Clnrod ping TIMEOUT.",
                     &format!(
-                        "Pinging {} {}/{} times with {} bytes TIMED OUT: {}\
+                        "Pinging {pubkey} {c}/{count} times with {ping_length} bytes TIMED OUT: {e}\
                         \n Please check if the `lightning-cli ping` command is stuck for your \
-                        node and requires a restart of CLN",
-                        pubkey, c, count, ping_length, e
+                        node and requires a restart of CLN"
                     ),
                     Some(pubkey),
                     NotifyVerbosity::Error,
@@ -506,7 +508,7 @@ pub async fn ln_ping(
             Ok(o) => o,
             Err(e) => {
                 results.push(timeout_ms);
-                log::warn!("Ping error: {}", e);
+                log::warn!("Ping error: {e}");
                 time::sleep(Duration::from_millis(250)).await;
                 continue;
             }
@@ -514,19 +516,12 @@ pub async fn ln_ping(
         if ping_response.totlen < ping_length {
             log::info!("Did not receive the full length ping back");
         }
-        let ping = now.elapsed().as_millis() as u16;
-        log::info!(
-            "Pinged {} {}/{} times with {} bytes in {}ms",
-            pubkey,
-            c,
-            count,
-            ping_length,
-            ping
-        );
+        let ping = u16::try_from(now.elapsed().as_millis())?;
+        log::info!("Pinged {pubkey} {c}/{count} times with {ping_length} bytes in {ping}ms");
         results.push(ping);
         time::sleep(Duration::from_millis(250)).await;
     }
 
-    results.sort();
+    results.sort_unstable();
     Ok(results)
 }

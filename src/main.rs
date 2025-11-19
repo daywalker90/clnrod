@@ -79,7 +79,7 @@ async fn main() -> Result<(), anyhow::Error> {
 
     let opt_ping_length: DefaultIntegerConfigOption = ConfigOption::new_i64_with_default(
         OPT_PING_LENGTH,
-        config_defaults.ping_length as i64,
+        i64::from(config_defaults.ping_length),
         "Length of the ping messages in bytes",
     )
     .dynamic();
@@ -140,7 +140,7 @@ async fn main() -> Result<(), anyhow::Error> {
         Some(plugin) => {
             match read_config(plugin.configuration().lightning_dir, &plugin, &state).await {
                 Ok(()) => &(),
-                Err(e) => return plugin.disable(format!("{}", e).as_str()).await,
+                Err(e) => return plugin.disable(format!("{e}").as_str()).await,
             };
             log::info!("read config done");
             plugin
@@ -155,7 +155,7 @@ async fn main() -> Result<(), anyhow::Error> {
                 match tasks::refresh_alias_cache(aliasclone.clone()).await {
                     Ok(()) => (),
                     Err(e) => log::warn!("Error in refresh_alias_cache thread: {e}"),
-                };
+                }
                 time::sleep(Duration::from_secs(60 * 60)).await;
             }
         });
