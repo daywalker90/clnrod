@@ -85,10 +85,10 @@ pub async fn read_pubkey_list(
     let mut pubkey_list = pubkey_list.lock();
 
     let removed = pubkey_list.difference(&new_pubkey_list).count();
-    log::info!("Reload: Removed {} peers", removed);
+    log::info!("Reload: Removed {removed} peers");
 
     let added = new_pubkey_list.difference(&pubkey_list).count();
-    log::info!("Reload: Added {} peers", added);
+    log::info!("Reload: Added {added} peers");
 
     *pubkey_list = new_pubkey_list;
     Ok((removed, added))
@@ -101,40 +101,40 @@ fn get_startup_options(
     let mut config = state.config.lock();
     if let Some(bm) = plugin.option_str(OPT_BLOCK_MODE)? {
         check_option(&mut config, OPT_BLOCK_MODE, &bm)?;
-    };
+    }
     if let Some(dm) = plugin.option_str(OPT_DENY_MESSAGE)? {
         check_option(&mut config, OPT_DENY_MESSAGE, &dm)?;
-    };
+    }
     if let Some(lr) = plugin.option_str(OPT_LEAK_REASON)? {
         check_option(&mut config, OPT_LEAK_REASON, &lr)?;
-    };
+    }
     if let Some(cr) = plugin.option_str(OPT_CUSTOM_RULE)? {
         check_option(&mut config, OPT_CUSTOM_RULE, &cr)?;
-    };
+    }
     if let Some(pl) = plugin.option_str(OPT_PING_LENGTH)? {
         check_option(&mut config, OPT_PING_LENGTH, &pl)?;
-    };
+    }
     if let Some(smtp_user) = plugin.option_str(OPT_SMTP_USERNAME)? {
         check_option(&mut config, OPT_SMTP_USERNAME, &smtp_user)?;
-    };
+    }
     if let Some(smtp_pw) = plugin.option_str(OPT_SMTP_PASSWORD)? {
         check_option(&mut config, OPT_SMTP_PASSWORD, &smtp_pw)?;
-    };
+    }
     if let Some(smtp_server) = plugin.option_str(OPT_SMTP_SERVER)? {
         check_option(&mut config, OPT_SMTP_SERVER, &smtp_server)?;
-    };
+    }
     if let Some(smtp_port) = plugin.option_str(OPT_SMTP_PORT)? {
         check_option(&mut config, OPT_SMTP_PORT, &smtp_port)?;
-    };
+    }
     if let Some(email_from) = plugin.option_str(OPT_EMAIL_FROM)? {
         check_option(&mut config, OPT_EMAIL_FROM, &email_from)?;
-    };
+    }
     if let Some(email_to) = plugin.option_str(OPT_EMAIL_TO)? {
         check_option(&mut config, OPT_EMAIL_TO, &email_to)?;
-    };
+    }
     if let Some(nv) = plugin.option_str(OPT_NOTIFY_VERBOSITY)? {
         check_option(&mut config, OPT_NOTIFY_VERBOSITY, &nv)?;
-    };
+    }
 
     log::info!("all options valid!");
 
@@ -149,7 +149,7 @@ fn check_option(config: &mut Config, name: &str, value: &options::Value) -> Resu
         n if n.eq(OPT_DENY_MESSAGE) => {
             let deny_message = value.as_str().unwrap().to_string();
             if deny_message.is_empty() {
-                return Err(anyhow!("{} must not be empty!", OPT_DENY_MESSAGE));
+                return Err(anyhow!("{OPT_DENY_MESSAGE} must not be empty!"));
             }
             config.deny_message = deny_message;
         }
@@ -157,7 +157,7 @@ fn check_option(config: &mut Config, name: &str, value: &options::Value) -> Resu
             config.leak_reason = match value {
                 options::Value::String(s) => s.parse()?,
                 options::Value::Boolean(b) => *b,
-                _ => return Err(anyhow!("{} must be a boolean", OPT_LEAK_REASON)),
+                _ => return Err(anyhow!("{OPT_LEAK_REASON} must be a boolean")),
             }
         }
         n if n.eq(OPT_CUSTOM_RULE) => {
@@ -166,9 +166,9 @@ fn check_option(config: &mut Config, name: &str, value: &options::Value) -> Resu
         }
         n if n.eq(OPT_PING_LENGTH) => {
             let ping_length = u16::try_from(value.as_i64().unwrap())
-                .context(format!("{} out of valid range", OPT_PING_LENGTH))?;
+                .context(format!("{OPT_PING_LENGTH} out of valid range"))?;
             if ping_length == 0 {
-                return Err(anyhow!("{} must be greater than 0", OPT_PING_LENGTH));
+                return Err(anyhow!("{OPT_PING_LENGTH} must be greater than 0"));
             }
             config.ping_length = ping_length;
         }
@@ -177,14 +177,14 @@ fn check_option(config: &mut Config, name: &str, value: &options::Value) -> Resu
         n if n.eq(OPT_SMTP_SERVER) => config.smtp_server = value.as_str().unwrap().to_string(),
         n if n.eq(OPT_SMTP_PORT) => {
             config.smtp_port = u16::try_from(value.as_i64().unwrap())
-                .context(format!("{} out of valid range", OPT_SMTP_PORT))?
+                .context(format!("{OPT_SMTP_PORT} out of valid range"))?;
         }
         n if n.eq(OPT_EMAIL_FROM) => config.email_from = value.as_str().unwrap().to_string(),
         n if n.eq(OPT_EMAIL_TO) => config.email_to = value.as_str().unwrap().to_string(),
         n if n.eq(OPT_NOTIFY_VERBOSITY) => {
             config.notify_verbosity = NotifyVerbosity::from_str(value.as_str().unwrap())?;
         }
-        _ => return Err(anyhow!("Unknown option: {}", name)),
+        _ => return Err(anyhow!("Unknown option: {name}")),
     }
     Ok(())
 }
@@ -196,7 +196,7 @@ fn parse_option(name: &str, value: &serde_json::Value) -> Result<options::Value,
                 BlockMode::from_str(bm_str)?;
                 Ok(options::Value::String(bm_str.to_string()))
             } else {
-                Err(anyhow!("{} is not a string!", OPT_BLOCK_MODE))
+                Err(anyhow!("{OPT_BLOCK_MODE} is not a string!"))
             }
         }
         n if n.eq(OPT_NOTIFY_VERBOSITY) => {
@@ -204,7 +204,7 @@ fn parse_option(name: &str, value: &serde_json::Value) -> Result<options::Value,
                 NotifyVerbosity::from_str(nv_str)?;
                 Ok(options::Value::String(nv_str.to_string()))
             } else {
-                Err(anyhow!("{} is not a string!", OPT_NOTIFY_VERBOSITY))
+                Err(anyhow!("{OPT_NOTIFY_VERBOSITY} is not a string!"))
             }
         }
         n if n.eq(OPT_CUSTOM_RULE) => {
@@ -212,7 +212,7 @@ fn parse_option(name: &str, value: &serde_json::Value) -> Result<options::Value,
                 parse_rule(cr_str)?;
                 Ok(options::Value::String(cr_str.to_string()))
             } else {
-                Err(anyhow!("{} is not a string!", OPT_CUSTOM_RULE))
+                Err(anyhow!("{OPT_CUSTOM_RULE} is not a string!"))
             }
         }
         n if n.eq(OPT_SMTP_PORT) | n.eq(OPT_PING_LENGTH) => {
@@ -223,18 +223,18 @@ fn parse_option(name: &str, value: &serde_json::Value) -> Result<options::Value,
                     return Ok(options::Value::Integer(n_neg_i64));
                 }
             }
-            Err(anyhow!("{} is not a valid integer!", name))
+            Err(anyhow!("{name} is not a valid integer!"))
         }
         n if n.eq(OPT_LEAK_REASON) => match value {
             serde_json::Value::String(s) => Ok(options::Value::Boolean(s.parse()?)),
             serde_json::Value::Bool(b) => Ok(options::Value::Boolean(*b)),
-            _ => return Err(anyhow!("{} must be a boolean", name)),
+            _ => Err(anyhow!("{name} must be a boolean")),
         },
         _ => {
             if value.is_string() {
                 Ok(options::Value::String(value.as_str().unwrap().to_string()))
             } else {
-                Err(anyhow!("{} is not a string!", name))
+                Err(anyhow!("{name} is not a string!"))
             }
         }
     }

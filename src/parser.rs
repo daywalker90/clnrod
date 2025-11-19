@@ -32,8 +32,8 @@ pub fn parse_rule(rule: &str) -> Result<Pairs<'_, Rule>, Error> {
             Ok(pairs.next().unwrap().into_inner())
         }
         Err(e) => {
-            warn!("Error parsing custom_rule: {}", e);
-            Err(anyhow!("Error parsing custom_rule: {}", e))
+            warn!("Error parsing custom_rule: {e}");
+            Err(anyhow!("Error parsing custom_rule: {e}"))
         }
     }
 }
@@ -60,20 +60,19 @@ pub fn evaluate_rule(
                     let left = inner_pairs.next().unwrap();
                     let operator = inner_pairs.next().unwrap();
                     let right = inner_pairs.next().unwrap();
-                    Ok(evaluate_comparison(left, right, operator, variables)?)
+                    Ok(evaluate_comparison(&left, &right, &operator, variables)?)
                 }
             }
             Rule::expr => Ok(evaluate_rule(parser, primary.into_inner(), variables)?),
             other => Err(anyhow!(
-                "Expected a comparison expression, got instead: `{:?}`",
-                other
+                "Expected a comparison expression, got instead: `{other:?}`"
             )),
         })
         .map_infix(|lhs, op, rhs| match op.as_rule() {
             Rule::or => {
-                let (lres, lreas) = lhs?;
-                let (rres, rreas) = rhs?;
-                let result = lres || rres;
+                let (left_res, lreas) = lhs?;
+                let (right_res, rreas) = rhs?;
+                let result = left_res || right_res;
 
                 if result {
                     Ok((result, None))
@@ -85,38 +84,37 @@ pub fn evaluate_rule(
                 }
             }
             Rule::and => {
-                let (lres, lreas) = lhs?;
-                let (rres, rreas) = rhs?;
-                let result = lres && rres;
+                let (left_res, lreas) = lhs?;
+                let (right_res, rreas) = rhs?;
+                let result = left_res && right_res;
                 if result {
                     Ok((result, None))
-                } else if !lres && !rres {
+                } else if !left_res && !right_res {
                     Ok((
                         result,
                         Some(format!("{}, {}", lreas.unwrap(), rreas.unwrap())),
                     ))
-                } else if !lres && rres {
+                } else if !left_res && right_res {
                     Ok((result, Some(lreas.unwrap())))
                 } else {
                     Ok((result, Some(rreas.unwrap())))
                 }
             }
             other => Err(anyhow!(
-                "Unexpected boolean operator, got instead: `{:?}`",
-                other
+                "Unexpected boolean operator, got instead: `{other:?}`"
             )),
         })
         .parse(rule)
 }
 
 fn evaluate_comparison(
-    left: Pair<Rule>,
-    right: Pair<Rule>,
-    operator: Pair<Rule>,
+    left: &Pair<Rule>,
+    right: &Pair<Rule>,
+    operator: &Pair<Rule>,
     variables: &PeerData,
 ) -> Result<(bool, Option<String>), Error> {
-    let left_value = evaluate_value(&left, variables)?;
-    let right_value = evaluate_value(&right, variables)?;
+    let left_value = evaluate_value(left, variables)?;
+    let right_value = evaluate_value(right, variables)?;
 
     let result = match operator.as_rule() {
         Rule::equal => left_value == right_value,
@@ -125,20 +123,17 @@ fn evaluate_comparison(
         Rule::lesser => left_value < right_value,
         Rule::gte => left_value >= right_value,
         Rule::lte => left_value <= right_value,
-        e => return Err(anyhow!("unknown comparison operator: {:?}", e)),
+        e => return Err(anyhow!("unknown comparison operator: {e:?}")),
     };
 
     let rej_match = format!("{} {} {}", left.as_str(), operator.as_str(), right_value);
 
-    debug!("Compared: {} Result: {}", rej_match, result);
+    debug!("Compared: {rej_match} Result: {result}");
 
     if result {
         Ok((result, None))
     } else {
-        Ok((
-            result,
-            Some(format!("{} -> actual: {}", rej_match, left_value)),
-        ))
+        Ok((result, Some(format!("{rej_match} -> actual: {left_value}"))))
     }
 }
 
@@ -159,34 +154,18 @@ fn evaluate_value(pair: &Pair<Rule>, variables: &PeerData) -> Result<u64, Error>
                 Ok(variables.openinginfo.multi_channel_count)
             }
             p if p.eq_ignore_ascii_case("cln_has_clearnet") => {
-                Ok(if variables.peerinfo.has_clearnet.unwrap() {
-                    1
-                } else {
-                    0
-                })
+                Ok(u64::from(variables.peerinfo.has_clearnet.unwrap()))
             }
             p if p.eq_ignore_ascii_case("cln_has_tor") => {
-                Ok(if variables.peerinfo.has_tor.unwrap() {
-                    1
-                } else {
-                    0
-                })
+                Ok(u64::from(variables.peerinfo.has_tor.unwrap()))
             }
             p if p.eq_ignore_ascii_case("cln_anchor_support") => {
-                Ok(if variables.peerinfo.anchor_support.unwrap() {
-                    1
-                } else {
-                    0
-                })
+                Ok(u64::from(variables.peerinfo.anchor_support.unwrap()))
             }
             p if p.eq_ignore_ascii_case("public") => {
-                Ok(if variables.openinginfo.channel_flags.public {
-                    1
-                } else {
-                    0
-                })
+                Ok(u64::from(variables.openinginfo.channel_flags.public))
             }
-            p if p.eq_ignore_ascii_case("ping") => Ok(variables.ping.unwrap() as u64),
+            p if p.eq_ignore_ascii_case("ping") => Ok(u64::from(variables.ping.unwrap())),
             p if p.eq_ignore_ascii_case("oneml_capacity") => Ok(variables
                 .oneml_data
                 .as_ref()
@@ -245,8 +224,8 @@ fn evaluate_value(pair: &Pair<Rule>, variables: &PeerData) -> Result<u64, Error>
                     Ok(u64::MAX)
                 }
             }
-            p if p.eq_ignore_ascii_case("amboss_has_email") => Ok(
-                if variables
+            p if p.eq_ignore_ascii_case("amboss_has_email") => Ok(u64::from(
+                variables
                     .amboss_data
                     .as_ref()
                     .unwrap()
@@ -254,15 +233,10 @@ fn evaluate_value(pair: &Pair<Rule>, variables: &PeerData) -> Result<u64, Error>
                     .socials
                     .info
                     .as_ref()
-                    .is_some_and(|i| i.email.is_some())
-                {
-                    1
-                } else {
-                    0
-                },
-            ),
-            p if p.eq_ignore_ascii_case("amboss_has_linkedin") => Ok(
-                if variables
+                    .is_some_and(|i| i.email.is_some()),
+            )),
+            p if p.eq_ignore_ascii_case("amboss_has_linkedin") => Ok(u64::from(
+                variables
                     .amboss_data
                     .as_ref()
                     .unwrap()
@@ -270,15 +244,10 @@ fn evaluate_value(pair: &Pair<Rule>, variables: &PeerData) -> Result<u64, Error>
                     .socials
                     .info
                     .as_ref()
-                    .is_some_and(|i| i.linkedin.is_some())
-                {
-                    1
-                } else {
-                    0
-                },
-            ),
-            p if p.eq_ignore_ascii_case("amboss_has_nostr") => Ok(
-                if variables
+                    .is_some_and(|i| i.linkedin.is_some()),
+            )),
+            p if p.eq_ignore_ascii_case("amboss_has_nostr") => Ok(u64::from(
+                variables
                     .amboss_data
                     .as_ref()
                     .unwrap()
@@ -286,15 +255,10 @@ fn evaluate_value(pair: &Pair<Rule>, variables: &PeerData) -> Result<u64, Error>
                     .socials
                     .info
                     .as_ref()
-                    .is_some_and(|i| i.nostr.is_some())
-                {
-                    1
-                } else {
-                    0
-                },
-            ),
-            p if p.eq_ignore_ascii_case("amboss_has_telegram") => Ok(
-                if variables
+                    .is_some_and(|i| i.nostr.is_some()),
+            )),
+            p if p.eq_ignore_ascii_case("amboss_has_telegram") => Ok(u64::from(
+                variables
                     .amboss_data
                     .as_ref()
                     .unwrap()
@@ -302,15 +266,10 @@ fn evaluate_value(pair: &Pair<Rule>, variables: &PeerData) -> Result<u64, Error>
                     .socials
                     .info
                     .as_ref()
-                    .is_some_and(|i| i.telegram.is_some())
-                {
-                    1
-                } else {
-                    0
-                },
-            ),
-            p if p.eq_ignore_ascii_case("amboss_has_twitter") => Ok(
-                if variables
+                    .is_some_and(|i| i.telegram.is_some()),
+            )),
+            p if p.eq_ignore_ascii_case("amboss_has_twitter") => Ok(u64::from(
+                variables
                     .amboss_data
                     .as_ref()
                     .unwrap()
@@ -318,15 +277,10 @@ fn evaluate_value(pair: &Pair<Rule>, variables: &PeerData) -> Result<u64, Error>
                     .socials
                     .info
                     .as_ref()
-                    .is_some_and(|i| i.twitter.is_some())
-                {
-                    1
-                } else {
-                    0
-                },
-            ),
-            p if p.eq_ignore_ascii_case("amboss_has_website") => Ok(
-                if variables
+                    .is_some_and(|i| i.twitter.is_some()),
+            )),
+            p if p.eq_ignore_ascii_case("amboss_has_website") => Ok(u64::from(
+                variables
                     .amboss_data
                     .as_ref()
                     .unwrap()
@@ -334,13 +288,8 @@ fn evaluate_value(pair: &Pair<Rule>, variables: &PeerData) -> Result<u64, Error>
                     .socials
                     .info
                     .as_ref()
-                    .is_some_and(|i| i.website.is_some())
-                {
-                    1
-                } else {
-                    0
-                },
-            ),
+                    .is_some_and(|i| i.website.is_some()),
+            )),
             p if p.eq_ignore_ascii_case("amboss_terminal_web_rank") => {
                 if let Some(term_web) = &variables
                     .amboss_data
@@ -361,13 +310,13 @@ fn evaluate_value(pair: &Pair<Rule>, variables: &PeerData) -> Result<u64, Error>
         Rule::BOOLEAN => match pair.as_str() {
             v if v.eq_ignore_ascii_case("true") => Ok(1),
             v if v.eq_ignore_ascii_case("false") => Ok(0),
-            e => Err(anyhow!("Invalid Boolean atomic: {}", e)),
+            e => Err(anyhow!("Invalid Boolean atomic: {e}")),
         },
         Rule::value => {
             let mut inner_pairs = pair.clone().into_inner();
             let inner = inner_pairs.next().unwrap();
             evaluate_value(&inner, variables)
         }
-        e => Err(anyhow!("Unexpected rule:{:?}", e)),
+        e => Err(anyhow!("Unexpected rule:{e:?}")),
     }
 }

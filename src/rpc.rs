@@ -168,25 +168,24 @@ pub async fn clnrod_testping(
                 Only provide the pubkey of the node you want to ping and optionally \
                 how often you want to ping."
                 ));
-            } else {
-                let pubkey_str = a
-                    .first()
-                    .unwrap()
-                    .as_str()
-                    .ok_or_else(|| anyhow!("bad pubkey string"))?;
-                let count = if let Some(c) = a.get(1) {
-                    c.as_u64().ok_or_else(|| anyhow!("bad count number"))?
-                } else {
-                    3
-                };
-                let length = if let Some(c) = a.get(2) {
-                    u16::try_from(c.as_u64().ok_or_else(|| anyhow!("bad length number"))?)
-                        .context("length out of valid range")?
-                } else {
-                    plugin.state().config.lock().ping_length
-                };
-                (pubkey_str, count, length)
             }
+            let pubkey_str = a
+                .first()
+                .unwrap()
+                .as_str()
+                .ok_or_else(|| anyhow!("bad pubkey string"))?;
+            let count = if let Some(c) = a.get(1) {
+                c.as_u64().ok_or_else(|| anyhow!("bad count number"))?
+            } else {
+                3
+            };
+            let length = if let Some(c) = a.get(2) {
+                u16::try_from(c.as_u64().ok_or_else(|| anyhow!("bad length number"))?)
+                    .context("length out of valid range")?
+            } else {
+                plugin.state().config.lock().ping_length
+            };
+            (pubkey_str, count, length)
         }
         _ => {
             return Err(anyhow!(
@@ -216,8 +215,8 @@ pub async fn clnrod_testping(
     .await?;
 
     let pings = ln_ping(plugin, pubkey, count, length).await?;
-    let sum_pings = pings.iter().map(|y| *y as u64).sum::<u64>();
-    let median = pings.iter().nth(pings.len() / 2).unwrap_or(&0);
+    let sum_pings = pings.iter().map(|y| u64::from(*y)).sum::<u64>();
+    let median = pings.get(pings.len() / 2).unwrap_or(&0);
     Ok(json!({"min":pings.iter().min(),
         "avg":sum_pings/(pings.len() as u64),
         "median":median,

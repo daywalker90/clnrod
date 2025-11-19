@@ -23,7 +23,7 @@ pub async fn openchannel_hook(
             notify(
                 &plugin,
                 "Clnrod channel rejected. V1 HOOK PARSING ERROR",
-                &format!("Error:\n{}\nHook input:\n{}", e, v),
+                &format!("Error:\n{e}\nHook input:\n{v}"),
                 None,
                 NotifyVerbosity::Error,
             )
@@ -56,7 +56,7 @@ fn parse_openchannel(v: &serde_json::Value) -> Result<(PublicKey, Amount, Channe
             .ok_or_else(|| anyhow!("Missing 'channel_flags' field"))?
             .as_u64()
             .ok_or_else(|| anyhow!("'channel_flags' field is not a u64"))?,
-    )?;
+    );
 
     Ok((pubkey, their_funding_msat, channel_flags))
 }
@@ -72,7 +72,7 @@ pub async fn openchannel2_hook(
             notify(
                 &plugin,
                 "Clnrod channel rejected. V2 HOOK PARSING ERROR",
-                &format!("Error:\n{}\nHook input:\n{}", e, v),
+                &format!("Error:\n{e}\nHook input:\n{v}"),
                 None,
                 NotifyVerbosity::Error,
             )
@@ -105,7 +105,7 @@ fn parse_openchannel2(v: &serde_json::Value) -> Result<(PublicKey, Amount, Chann
             .ok_or_else(|| anyhow!("Missing 'channel_flags' field"))?
             .as_u64()
             .ok_or_else(|| anyhow!("'channel_flags' field is not a u64"))?,
-    )?;
+    );
 
     Ok((pubkey, their_funding_msat, channel_flags))
 }
@@ -120,7 +120,7 @@ async fn release_hook(
     let config = plugin.state().config.lock().clone();
 
     let list_matched = pubkey_list.contains(&pubkey);
-    log::debug!("release_hook: start, {}", list_matched);
+    log::debug!("release_hook: start, {list_matched}");
 
     let allowed_custom = if !list_matched && !config.custom_rule.is_empty() {
         let data = match collect_data(
@@ -164,7 +164,7 @@ async fn release_hook(
     } else {
         None
     };
-    log::debug!("release_hook: done, {} {:?}", list_matched, allowed_custom);
+    log::debug!("release_hook: done, {list_matched} {allowed_custom:?}");
     match config.block_mode {
         BlockMode::Allow => {
             if list_matched {
@@ -199,8 +199,7 @@ async fn release_hook(
                         "Clnrod channel rejected.",
                         &format!(
                             "Not on allowlist and not accepted by custom rule. \
-                        Offending comparisons: `{}`",
-                            reject_reason
+                        Offending comparisons: `{reject_reason}`"
                         ),
                         Some(pubkey),
                         NotifyVerbosity::All,
@@ -253,8 +252,7 @@ async fn release_hook(
                         "Clnrod channel rejected.",
                         &format!(
                             "Not on denylist, but did not get accepted by custom rule. \
-                        Offending comparisons: `{}`",
-                            reject_reason
+                        Offending comparisons: `{reject_reason}`"
                         ),
                         Some(pubkey),
                         NotifyVerbosity::All,
@@ -277,10 +275,10 @@ async fn release_hook(
     }
 }
 
-fn parse_channel_flags(channel_flags: u64) -> Result<ChannelFlags, Error> {
+fn parse_channel_flags(channel_flags: u64) -> ChannelFlags {
     let lsb = channel_flags & 1;
     let public = lsb == 1;
-    Ok(ChannelFlags { public })
+    ChannelFlags { public }
 }
 
 fn create_reject_response(config: &Config, reason: &str) -> serde_json::Value {

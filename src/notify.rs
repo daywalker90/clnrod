@@ -17,12 +17,7 @@ use lettre::{
 
 use crate::structs::{Config, NotifyVerbosity, PluginState};
 
-async fn send_mail(
-    config: &Config,
-    subject: &String,
-    body: &String,
-    html: bool,
-) -> Result<(), Error> {
+async fn send_mail(config: &Config, subject: &String, body: &str, html: bool) -> Result<(), Error> {
     let header = if html {
         ContentType::TEXT_HTML
     } else {
@@ -34,7 +29,7 @@ async fn send_mail(
         .to(config.email_to.parse().unwrap())
         .subject(subject.clone())
         .header(header)
-        .body(body.to_string())
+        .body(body.to_owned())
         .unwrap();
 
     let creds = Credentials::new(config.smtp_username.clone(), config.smtp_password.clone());
@@ -60,7 +55,7 @@ async fn send_mail(
         );
         Ok(())
     } else {
-        Err(anyhow!("Failed to send email: {:?}", result))
+        Err(anyhow!("Failed to send email: {result:?}"))
     }
 }
 
@@ -92,9 +87,7 @@ pub async fn notify(
         log::warn!(
             "{}: pubkey: {} alias: {} message: {}",
             subject,
-            pubkey
-                .map(|pk| pk.to_string())
-                .unwrap_or("None".to_string()),
+            pubkey.map_or("None".to_string(), |pk| pk.to_string()),
             alias,
             body
         );
@@ -102,9 +95,7 @@ pub async fn notify(
         log::info!(
             "{}: pubkey: {} alias: {} message: {}",
             subject,
-            pubkey
-                .map(|pk| pk.to_string())
-                .unwrap_or("None".to_string()),
+            pubkey.map_or("None".to_string(), |pk| pk.to_string()),
             alias,
             body
         );
@@ -117,17 +108,15 @@ pub async fn notify(
             &format!(
                 "alias:\n{}\n\npubkey:\n{}\n\nMessage:\n{}\n\nCollected data:\n{}",
                 alias,
-                pubkey
-                    .map(|pk| pk.to_string())
-                    .unwrap_or("None".to_string()),
+                pubkey.map_or("None".to_string(), |pk| pk.to_string()),
                 body,
-                cache.map(|pd| pd.to_string()).unwrap_or("None".to_string())
+                cache.map_or("None".to_string(), |pd| pd.to_string())
             ),
             false,
         )
         .await
         {
-            log::warn!("Error sending mail: {} pubkey: {:?}", e, pubkey);
+            log::warn!("Error sending mail: {e} pubkey: {pubkey:?}");
         };
     }
 }
