@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.5.1] - 2026-03-29
+
+### Changed
+- updated `cln-rpc` and `cln-plugin` dependencies
+
 ## [0.5.0] - 2025-10-21
 
 ### Added
