@@ -245,6 +245,7 @@ async fn get_peer_data(
         .call_typed(&ListpeerchannelsRequest {
             id: Some(pubkey),
             short_channel_id: None,
+            channel_id: None,
         })
         .await?
         .channels;
