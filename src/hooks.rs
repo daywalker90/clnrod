@@ -1,9 +1,12 @@
-use std::str::FromStr;
-
-use anyhow::{anyhow, Error};
+use anyhow::Error;
 use cln_plugin::Plugin;
-use cln_rpc::primitives::{Amount, PublicKey};
-use serde_json::json;
+use cln_rpc::{
+    hooks::{
+        actions::{Openchannel2Action, Openchannel2Result, OpenchannelAction, OpenchannelResult},
+        events::{Openchannel2Event, OpenchannelEvent},
+    },
+    primitives::{Amount, PublicKey},
+};
 
 use crate::{
     collect::collect_data,
@@ -14,100 +17,74 @@ use crate::{
 
 pub async fn openchannel_hook(
     plugin: Plugin<PluginState>,
-    v: serde_json::Value,
-) -> Result<serde_json::Value, Error> {
-    let config = plugin.state().config.lock().clone();
-    let (pubkey, their_funding_msat, channel_flags) = match parse_openchannel(&v) {
-        Ok(parsed) => parsed,
-        Err(e) => {
-            notify(
-                &plugin,
-                "Clnrod channel rejected. V1 HOOK PARSING ERROR",
-                &format!("Error:\n{e}\nHook input:\n{v}"),
-                None,
-                NotifyVerbosity::Error,
-            )
-            .await;
-            return Ok(create_reject_response(&config, "internal error"));
+    event: OpenchannelEvent,
+) -> Result<OpenchannelAction, Error> {
+    match release_hook(
+        plugin.clone(),
+        event.openchannel.id,
+        event.openchannel.funding_msat,
+        parse_channel_flags(event.openchannel.channel_flags),
+    )
+    .await
+    {
+        Ok(is_zeroconf_allowed) => {
+            let zeroconf_channel = if let Some(ct) = event.openchannel.channel_type {
+                ct.bits.contains(&50)
+            } else {
+                false
+            };
+
+            let mindepth = if zeroconf_channel && is_zeroconf_allowed {
+                Some(0)
+            } else {
+                None
+            };
+
+            Ok(OpenchannelAction {
+                close_to: None,
+                error_message: None,
+                mindepth,
+                reserve: None,
+                result: OpenchannelResult::CONTINUE,
+            })
         }
-    };
-    Ok(release_hook(plugin.clone(), pubkey, their_funding_msat, channel_flags).await)
-}
-
-fn parse_openchannel(v: &serde_json::Value) -> Result<(PublicKey, Amount, ChannelFlags), Error> {
-    let openchannel = v
-        .get("openchannel")
-        .ok_or_else(|| anyhow!("Missing 'openchannel' field"))?;
-    let id = openchannel
-        .get("id")
-        .and_then(|id| id.as_str())
-        .ok_or_else(|| anyhow!("Missing 'id' field"))?;
-    let pubkey = PublicKey::from_str(id)?;
-    let their_funding_msat = Amount::from_msat(
-        openchannel
-            .get("funding_msat")
-            .ok_or_else(|| anyhow!("Missing 'funding_msat' field"))?
-            .as_u64()
-            .ok_or_else(|| anyhow!("'funding_msat' field is not a u64"))?,
-    );
-    let channel_flags = parse_channel_flags(
-        openchannel
-            .get("channel_flags")
-            .ok_or_else(|| anyhow!("Missing 'channel_flags' field"))?
-            .as_u64()
-            .ok_or_else(|| anyhow!("'channel_flags' field is not a u64"))?,
-    );
-
-    Ok((pubkey, their_funding_msat, channel_flags))
+        Err(e) => Ok(OpenchannelAction {
+            close_to: None,
+            error_message: Some(e),
+            mindepth: None,
+            reserve: None,
+            result: OpenchannelResult::REJECT,
+        }),
+    }
 }
 
 pub async fn openchannel2_hook(
     plugin: Plugin<PluginState>,
-    v: serde_json::Value,
-) -> Result<serde_json::Value, Error> {
-    let config = plugin.state().config.lock().clone();
-    let (pubkey, their_funding_msat, channel_flags) = match parse_openchannel2(&v) {
-        Ok(parsed) => parsed,
-        Err(e) => {
-            notify(
-                &plugin,
-                "Clnrod channel rejected. V2 HOOK PARSING ERROR",
-                &format!("Error:\n{e}\nHook input:\n{v}"),
-                None,
-                NotifyVerbosity::Error,
-            )
-            .await;
-            return Ok(create_reject_response(&config, "internal error"));
-        }
-    };
-    Ok(release_hook(plugin.clone(), pubkey, their_funding_msat, channel_flags).await)
-}
-
-fn parse_openchannel2(v: &serde_json::Value) -> Result<(PublicKey, Amount, ChannelFlags), Error> {
-    let openchannel2 = v
-        .get("openchannel2")
-        .ok_or_else(|| anyhow!("Missing 'openchannel2' field"))?;
-    let id = openchannel2
-        .get("id")
-        .and_then(|id| id.as_str())
-        .ok_or_else(|| anyhow!("Missing 'id' field"))?;
-    let pubkey = PublicKey::from_str(id)?;
-    let their_funding_msat = Amount::from_msat(
-        openchannel2
-            .get("their_funding_msat")
-            .ok_or_else(|| anyhow!("Missing 'their_funding_msat' field"))?
-            .as_u64()
-            .ok_or_else(|| anyhow!("'their_funding_msat' field is not a u64"))?,
-    );
-    let channel_flags = parse_channel_flags(
-        openchannel2
-            .get("channel_flags")
-            .ok_or_else(|| anyhow!("Missing 'channel_flags' field"))?
-            .as_u64()
-            .ok_or_else(|| anyhow!("'channel_flags' field is not a u64"))?,
-    );
-
-    Ok((pubkey, their_funding_msat, channel_flags))
+    event: Openchannel2Event,
+) -> Result<Openchannel2Action, Error> {
+    match release_hook(
+        plugin.clone(),
+        event.openchannel2.id,
+        event.openchannel2.their_funding_msat,
+        parse_channel_flags(event.openchannel2.channel_flags),
+    )
+    .await
+    {
+        Ok(_o) => Ok(Openchannel2Action {
+            close_to: None,
+            error_message: None,
+            result: Openchannel2Result::CONTINUE,
+            our_funding_msat: None,
+            psbt: None,
+        }),
+        Err(e) => Ok(Openchannel2Action {
+            close_to: None,
+            error_message: Some(e),
+            result: Openchannel2Result::REJECT,
+            our_funding_msat: None,
+            psbt: None,
+        }),
+    }
 }
 
 async fn release_hook(
@@ -115,12 +92,16 @@ async fn release_hook(
     pubkey: PublicKey,
     their_funding_msat: Amount,
     channel_flags: ChannelFlags,
-) -> serde_json::Value {
+) -> Result<bool, String> {
     let pubkey_list = plugin.state().pubkey_list.lock().clone();
     let config = plugin.state().config.lock().clone();
 
     let list_matched = pubkey_list.contains(&pubkey);
-    log::debug!("release_hook: start, {list_matched}");
+    let is_zeroconf_allowed = plugin.state().zero_conf_list.lock().contains(&pubkey);
+    log::debug!(
+        "release_hook: start, list_matched:{list_matched},\
+         is_zeroconf_allowed:{is_zeroconf_allowed}"
+    );
 
     let allowed_custom = if !list_matched && !config.custom_rule.is_empty() {
         let data = match collect_data(
@@ -143,7 +124,7 @@ async fn release_hook(
                     NotifyVerbosity::Error,
                 )
                 .await;
-                return create_reject_response(&config, "internal error");
+                return Err(create_reject_response(&config, "internal error"));
             }
         };
         let parser = ClnrodParser::new();
@@ -158,13 +139,13 @@ async fn release_hook(
                     NotifyVerbosity::Error,
                 )
                 .await;
-                return create_reject_response(&config, "internal error");
+                return Err(create_reject_response(&config, "internal error"));
             }
         }
     } else {
         None
     };
-    log::debug!("release_hook: done, {list_matched} {allowed_custom:?}");
+    log::debug!("release_hook: done, allowed_custom:{allowed_custom:?}");
     match config.block_mode {
         BlockMode::Allow => {
             if list_matched {
@@ -176,7 +157,7 @@ async fn release_hook(
                     NotifyVerbosity::Accepted,
                 )
                 .await;
-                json!({"result":"continue"})
+                Ok(is_zeroconf_allowed)
             } else if let Some(cu) = allowed_custom {
                 if cu.0 {
                     notify(
@@ -187,7 +168,7 @@ async fn release_hook(
                         NotifyVerbosity::Accepted,
                     )
                     .await;
-                    json!({"result":"continue"})
+                    Ok(is_zeroconf_allowed)
                 } else {
                     let reject_reason = if let Some(rej_res) = cu.1 {
                         rej_res
@@ -205,7 +186,7 @@ async fn release_hook(
                         NotifyVerbosity::All,
                     )
                     .await;
-                    create_reject_response(&config, &reject_reason)
+                    Err(create_reject_response(&config, &reject_reason))
                 }
             } else {
                 notify(
@@ -216,7 +197,7 @@ async fn release_hook(
                     NotifyVerbosity::All,
                 )
                 .await;
-                create_reject_response(&config, "not whitelisted")
+                Err(create_reject_response(&config, "not whitelisted"))
             }
         }
         BlockMode::Deny => {
@@ -229,7 +210,7 @@ async fn release_hook(
                     NotifyVerbosity::All,
                 )
                 .await;
-                create_reject_response(&config, "blacklisted")
+                Err(create_reject_response(&config, "blacklisted"))
             } else if let Some(cu) = allowed_custom {
                 if cu.0 {
                     notify(
@@ -240,7 +221,7 @@ async fn release_hook(
                         NotifyVerbosity::Accepted,
                     )
                     .await;
-                    json!({"result":"continue"})
+                    Ok(is_zeroconf_allowed)
                 } else {
                     let reject_reason = if let Some(rej_res) = cu.1 {
                         rej_res
@@ -258,7 +239,7 @@ async fn release_hook(
                         NotifyVerbosity::All,
                     )
                     .await;
-                    create_reject_response(&config, &reject_reason)
+                    Err(create_reject_response(&config, &reject_reason))
                 }
             } else {
                 notify(
@@ -269,23 +250,22 @@ async fn release_hook(
                     NotifyVerbosity::Accepted,
                 )
                 .await;
-                json!({"result":"continue"})
+                Ok(is_zeroconf_allowed)
             }
         }
     }
 }
 
-fn parse_channel_flags(channel_flags: u64) -> ChannelFlags {
+fn parse_channel_flags(channel_flags: u8) -> ChannelFlags {
     let lsb = channel_flags & 1;
     let public = lsb == 1;
     ChannelFlags { public }
 }
 
-fn create_reject_response(config: &Config, reason: &str) -> serde_json::Value {
+fn create_reject_response(config: &Config, reason: &str) -> String {
     if config.leak_reason {
-        json!({"result": "reject",
-        "error_message": format!("{} Reason: {}", config.deny_message, reason)})
+        format!("{} Reason: {}", config.deny_message, reason)
     } else {
-        json!({"result": "reject", "error_message": config.deny_message})
+        config.deny_message.clone()
     }
 }

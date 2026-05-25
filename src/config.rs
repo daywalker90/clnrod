@@ -1,13 +1,8 @@
-use std::{
-    collections::HashSet,
-    path::{Path, PathBuf},
-    str::FromStr,
-    sync::Arc,
-};
+use std::{collections::HashSet, path::Path, str::FromStr, sync::Arc};
 
-use anyhow::{anyhow, Context, Error};
-use cln_plugin::{options, ConfiguredPlugin, Plugin};
-use cln_rpc::{primitives::PublicKey, RpcError};
+use anyhow::{Context, Error, anyhow};
+use cln_plugin::{ConfiguredPlugin, Plugin, options};
+use cln_rpc::{RpcError, primitives::PublicKey};
 use parking_lot::Mutex;
 use serde_json::json;
 use tokio::{
@@ -16,9 +11,6 @@ use tokio::{
 };
 
 use crate::{
-    parser::parse_rule,
-    structs::{BlockMode, Config, NotifyVerbosity},
-    PluginState,
     OPT_BLOCK_MODE,
     OPT_CUSTOM_RULE,
     OPT_DENY_MESSAGE,
@@ -32,6 +24,9 @@ use crate::{
     OPT_SMTP_SERVER,
     OPT_SMTP_USERNAME,
     PLUGIN_NAME,
+    PluginState,
+    parser::parse_rule,
+    structs::{BlockMode, Config, NotifyVerbosity},
 };
 
 pub async fn read_config(
@@ -51,7 +46,8 @@ pub async fn read_config(
             .unwrap(),
     )?;
 
-    read_pubkey_list(state.pubkey_list.clone(), plugin_dir, block_mode).await?;
+    read_pubkey_list(state.pubkey_list.clone(), &plugin_dir, block_mode).await?;
+    read_zeroconf_list(state.zero_conf_list.clone(), &plugin_dir).await?;
 
     let mut config = state.config.lock();
     activate_mail(&mut config);
@@ -61,7 +57,7 @@ pub async fn read_config(
 
 pub async fn read_pubkey_list(
     pubkey_list: Arc<Mutex<HashSet<PublicKey>>>,
-    plugin_dir: PathBuf,
+    plugin_dir: &Path,
     block_mode: BlockMode,
 ) -> Result<(usize, usize), Error> {
     let file_path = match block_mode {
@@ -91,6 +87,37 @@ pub async fn read_pubkey_list(
     log::info!("Reload: Added {added} peers");
 
     *pubkey_list = new_pubkey_list;
+    Ok((removed, added))
+}
+
+pub async fn read_zeroconf_list(
+    zero_conf_list: Arc<Mutex<HashSet<PublicKey>>>,
+    plugin_dir: &Path,
+) -> Result<(usize, usize), Error> {
+    let file_path = plugin_dir.join("zeroconflist.txt");
+
+    fs::create_dir_all(&plugin_dir).await?;
+    if !file_path.exists() {
+        let _ = File::create(&file_path).await?;
+    }
+
+    let mut new_zero_conf_list = HashSet::new();
+    let block_file = File::open(file_path).await?;
+    let file_reader = BufReader::new(block_file);
+    let mut file_lines = file_reader.lines();
+    while let Some(line) = file_lines.next_line().await? {
+        new_zero_conf_list.insert(PublicKey::from_str(&line)?);
+    }
+
+    let mut zero_conf_list = zero_conf_list.lock();
+
+    let removed = zero_conf_list.difference(&new_zero_conf_list).count();
+    log::info!("Reload: Removed {removed} zeroconf peers");
+
+    let added = new_zero_conf_list.difference(&zero_conf_list).count();
+    log::info!("Reload: Added {added} zeroconf peers");
+
+    *zero_conf_list = new_zero_conf_list;
     Ok((removed, added))
 }
 

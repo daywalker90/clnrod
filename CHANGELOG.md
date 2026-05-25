@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+### Added
+- new file to allow for zeroconf channels: `zeroconflist.txt`, see README for more info
+
+## Changed
+- `clnrod-reload` will also reload `zeroconflist.txt`
+
 ## [0.5.1] - 2026-03-29
 
 ### Changed

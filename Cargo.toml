@@ -14,9 +14,9 @@ parking_lot = "0.12"
 pest = "2"
 pest_derive = "2"
 
-cln-rpc = "0.6"
+cln-rpc = "0.7"
 # cln-rpc = { path = "../lightning/cln-rpc/", version = "^0.6" }
-cln-plugin = "0.6"
+cln-plugin = "0.7"
 # cln-plugin = { path = "../lightning/plugins/", version = "^0.6" }
 
 reqwest = { version = "0.12", default-features = false, features = [

@@ -5,11 +5,11 @@ use std::{
     sync::Arc,
 };
 
-use anyhow::{anyhow, Error};
+use anyhow::{Error, anyhow};
 use cln_rpc::primitives::PublicKey;
 use parking_lot::Mutex;
 use pest::pratt_parser::{Assoc, Op, PrattParser};
-use serde::{de::IntoDeserializer, Deserialize, Serialize};
+use serde::{Deserialize, Serialize, de::IntoDeserializer};
 
 use crate::Rule;
 
@@ -17,6 +17,7 @@ use crate::Rule;
 pub struct PluginState {
     pub config: Arc<Mutex<Config>>,
     pub pubkey_list: Arc<Mutex<HashSet<PublicKey>>>,
+    pub zero_conf_list: Arc<Mutex<HashSet<PublicKey>>>,
     pub amboss_lock: Arc<tokio::sync::Mutex<u128>>,
     pub oneml_lock: Arc<tokio::sync::Mutex<u128>>,
     pub peerdata_cache: Arc<Mutex<HashMap<PublicKey, PeerDataCache>>>,
@@ -27,6 +28,7 @@ impl PluginState {
         PluginState {
             config: Arc::new(Mutex::new(Config::new())),
             pubkey_list: Arc::new(Mutex::new(HashSet::new())),
+            zero_conf_list: Arc::new(Mutex::new(HashSet::new())),
             amboss_lock: Arc::new(tokio::sync::Mutex::new(0)),
             oneml_lock: Arc::new(tokio::sync::Mutex::new(0)),
             peerdata_cache: Arc::new(Mutex::new(HashMap::new())),
