@@ -5,8 +5,8 @@ import logging
 import pytest
 from pyln.client import RpcError
 from pyln.testing.fixtures import *  # noqa: F403
-from pyln.testing.utils import sync_blockheight, wait_for
-from util import experimental_anchors_check, get_plugin  # noqa: F401
+from pyln.testing.utils import sync_blockheight, wait_for, only_one
+from util import get_plugin  # noqa: F401
 
 LOGGER = logging.getLogger(__name__)
 
@@ -228,9 +228,6 @@ def test_clnrod_custom_gossip(node_factory, bitcoind, get_plugin):  # noqa: F811
         },
         {},
     ]
-    if experimental_anchors_check(node_factory):
-        opts[0]["experimental-anchors"] = None
-        opts[1]["experimental-anchors"] = None
 
     l1, l2 = node_factory.get_nodes(
         2,
@@ -280,9 +277,6 @@ def test_clnrod_custom_gossip_v2(node_factory, bitcoind, get_plugin):  # noqa: F
             "experimental-dual-fund": None,
         },
     ]
-    if experimental_anchors_check(node_factory):
-        opts[0]["experimental-anchors"] = None
-        opts[1]["experimental-anchors"] = None
     l1, l2 = node_factory.get_nodes(
         2,
         opts,
@@ -500,3 +494,59 @@ def test_email_activation(node_factory, get_plugin):  # noqa: F811
     )
     l1.daemon.logsearch_start = 0
     l1.daemon.wait_for_log(r"plugin-clnrod: Will try to send notifications via email")
+
+
+def test_clnrod_zeroconflist(node_factory, bitcoind, get_plugin):  # noqa: F811
+    l1, l2 = node_factory.get_nodes(
+        2,
+        opts=[
+            {
+                "plugin": get_plugin,
+                "clnrod-blockmode": "deny",
+                "clnrod-denymessage": "No thanks",
+            },
+            {},
+        ],
+    )
+
+    l2.fundwallet(10_000_000)
+
+    with pytest.raises(
+        RpcError, match="You required zeroconf, but you're not on our allowlist"
+    ):
+        l2.rpc.fundchannel(
+            l1.info["id"] + "@localhost:" + str(l1.port),
+            1_000_000,
+            mindepth=0,
+            announce=True,
+            channel_type=[12, 22, 46, 50],
+        )
+
+    with open(l1.info["lightning-dir"] + "/clnrod/zeroconflist.txt", "w") as af:
+        af.writelines(l2.info["id"] + "\n")
+
+    reload = l1.rpc.call("clnrod-reload")
+    assert reload["zeroconf_added"] == 1
+
+    wait_for(lambda: len(l1.rpc.listpeerchannels(l2.info["id"])["channels"]) == 0)
+
+    l2.rpc.fundchannel(
+        l1.info["id"] + "@localhost:" + str(l1.port),
+        1_000_000,
+        mindepth=0,
+        announce=True,
+        channel_type=[12, 22, 46, 50],
+    )
+
+    wait_for(lambda: len(l1.rpc.listpeerchannels(l2.info["id"])["channels"]) == 1)
+
+    wait_for(
+        lambda: (
+            only_one(l1.rpc.listpeerchannels(l2.info["id"])["channels"])["state"]
+            == "CHANNELD_NORMAL"
+        )
+    )
+
+    invoice = l1.rpc.call("invoice", [5000, "test", "description"])
+
+    l2.rpc.call("xpay", [invoice["bolt11"]])

@@ -34,15 +34,6 @@ def generate_random_number():
     return random.randint(1, 20_000_000_000_000_00_000)
 
 
-def pay_with_thread(rpc, bolt11):
-    LOGGER = logging.getLogger(__name__)
-    try:
-        rpc.dev_pay(bolt11, dev_use_shadow=False)
-    except Exception as e:
-        LOGGER.info(f"holdinvoice: Error paying payment hash:{e}")
-        pass
-
-
 def update_config_file_option(lightning_dir, option_name, option_value):
     with open(lightning_dir + "/config", "r") as file:
         lines = file.readlines()
@@ -53,12 +44,3 @@ def update_config_file_option(lightning_dir, option_name, option_value):
 
     with open(lightning_dir + "/config", "w") as file:
         file.writelines(lines)
-
-
-def experimental_anchors_check(node_factory):
-    l1 = node_factory.get_node()
-    version = l1.rpc.getinfo()["version"]
-    if version.startswith("v23"):
-        return True
-    else:
-        return False

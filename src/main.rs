@@ -131,8 +131,8 @@ async fn main() -> Result<(), anyhow::Error> {
         .option(opt_email_from)
         .option(opt_email_to)
         .option(opt_notify_verbosity)
-        .hook("openchannel", openchannel_hook)
-        .hook("openchannel2", openchannel2_hook)
+        .hook_typed("openchannel", openchannel_hook)
+        .hook_typed("openchannel2", openchannel2_hook)
         .dynamic()
         .configure()
         .await?

@@ -95,7 +95,7 @@ If you want to make sure that no channels open to you without going through this
 New rpc methods with this plugin:
 
 * **clnrod-reload**
-    * reload ``allowlist.txt``/``denylist.txt``
+    * reload ``allowlist.txt``/``denylist.txt``/``zeroconflist.txt``
 * **clnrod-testrule** *pubkey* *public* *their_funding_sat* *rule*
     * test your custom *rule* with a fake channel opening by a peer with *pubkey* who will make the channel *public* and *their_funding_sat* big
     * example: ``lightning-cli clnrod-testrule -k pubkey=02eadbd9e7557375161df8b646776a547c5cbc2e95b3071ec81553f8ec2cea3b8c public=true their_funding_sat=1000000 rule='amboss_terminal_web_rank < 1000'`` 
@@ -116,6 +116,9 @@ Setting the blockmode to deny means:
 1. if a channel opener's pubkey is on the denylist (``~/.lightning/<network>/clnrod/denylist.txt``) the channel will always be denied, no matter the custom rule
 2. if such a pubkey is not on the denylist it has to face the custom rule if their is one, otherwise it will be accepted
 3. if the custom rule returns ``true`` the channel will be accepted, otherwise (``false``) it will be rejected
+
+## Zeroconf channels
+If a channel tries to open a zeroconf channel (bit 50: `option_zeroconf`) it must be in the `zeroconflist.txt` file to be allowed to do so. All other restrictions from your block mode still apply!
 
 ## Logs/E-mails
 Email configuration is optional and everything gets logged regardless

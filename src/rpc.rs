@@ -1,22 +1,22 @@
 use std::{path::Path, str::FromStr};
 
-use anyhow::{anyhow, Context, Error};
+use anyhow::{Context, Error, anyhow};
 use cln_plugin::Plugin;
 use cln_rpc::{
+    ClnRpc,
     model::requests::ConnectRequest,
     primitives::{Amount, PublicKey},
-    ClnRpc,
 };
 use serde_json::json;
 
 use crate::{
+    OPT_BLOCK_MODE,
+    PLUGIN_NAME,
     collect::{collect_data, ln_ping},
-    config::read_pubkey_list,
+    config::{read_pubkey_list, read_zeroconf_list},
     notify::notify,
     parser::{evaluate_rule, parse_rule},
     structs::{BlockMode, ChannelFlags, ClnrodParser, NotifyVerbosity, PluginState},
-    OPT_BLOCK_MODE,
-    PLUGIN_NAME,
 };
 
 pub async fn clnrod_reload(
@@ -33,10 +33,15 @@ pub async fn clnrod_reload(
             .unwrap(),
     )
     .unwrap();
-    let (removed, added) =
-        read_pubkey_list(plugin.state().pubkey_list.clone(), plugin_dir, block_mode).await?;
 
-    Ok(json!({"removed":removed, "added":added}))
+    let (removed, added) =
+        read_pubkey_list(plugin.state().pubkey_list.clone(), &plugin_dir, block_mode).await?;
+
+    let (zero_removed, zero_added) =
+        read_zeroconf_list(plugin.state().zero_conf_list.clone(), &plugin_dir).await?;
+
+    Ok(json!({"removed":removed, "added":added,
+         "zeroconf_removed":zero_removed, "zeroconf_added":zero_added}))
 }
 
 pub async fn clnrod_testrule(
@@ -189,10 +194,10 @@ pub async fn clnrod_testping(
         }
         _ => {
             return Err(anyhow!(
-            "Invalid input! Use command like this: `lightning-cli clnrod-ping -k pubkey=<pubkey> \
+                "Invalid input! Use command like this: `lightning-cli clnrod-ping -k pubkey=<pubkey> \
             [count=<count>] [length=<length>]` or this: \
             `lightning-cli clnrod-ping <pubkey> [<count>] [<length>]`"
-        ))
+            ));
         }
     };
     if count < 1 {
