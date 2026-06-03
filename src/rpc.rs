@@ -1,4 +1,9 @@
-use std::{path::Path, str::FromStr};
+use std::{
+    io,
+    path::{Path, PathBuf},
+    str::FromStr,
+    time::Duration,
+};
 
 use anyhow::{Context, Error, anyhow};
 use cln_plugin::Plugin;
@@ -8,6 +13,11 @@ use cln_rpc::{
     primitives::{Amount, PublicKey},
 };
 use serde_json::json;
+use tokio::{
+    fs::{self},
+    io::{AsyncReadExt, AsyncWriteExt},
+    time,
+};
 
 use crate::{
     OPT_BLOCK_MODE,
@@ -226,4 +236,221 @@ pub async fn clnrod_testping(
         "avg":sum_pings/(pings.len() as u64),
         "median":median,
         "max":pings.iter().max()}))
+}
+
+pub async fn clnrod_managelists(
+    plugin: Plugin<PluginState>,
+    args: serde_json::Value,
+) -> Result<serde_json::Value, Error> {
+    let (listtype_str, operation_str, pubkey_str) = parse_managelists_args(&args)?;
+    let pubkey = PublicKey::from_str(pubkey_str).context("invalid pubkey")?;
+
+    match listtype_str {
+        "allow" => {
+            if plugin.state().config.lock().block_mode == BlockMode::Deny {
+                return Err(anyhow!("You are configured to use the denylist!"));
+            }
+        }
+        "deny" => {
+            if plugin.state().config.lock().block_mode == BlockMode::Allow {
+                return Err(anyhow!("You are configured to use the allowlist!"));
+            }
+        }
+        _ => (),
+    }
+
+    {
+        let pubkey_list = match listtype_str {
+            "allow" | "deny" => plugin.state().pubkey_list.lock(),
+            "zeroconf" => plugin.state().zero_conf_list.lock(),
+            _ => return Err(anyhow!("listtype must be `allow`, `deny` or `zeroconf`")),
+        };
+        match operation_str {
+            "add" => {
+                if pubkey_list.contains(&pubkey) {
+                    return Err(anyhow!("pubkey already in list"));
+                }
+            }
+            "remove" => {
+                if !pubkey_list.contains(&pubkey) {
+                    return Err(anyhow!("pubkey not found in list"));
+                }
+            }
+            _ => return Err(anyhow!("operation must be `add` or `remove`")),
+        }
+    }
+
+    let clnrod_path = PathBuf::from_str(&plugin.configuration().lightning_dir)?.join(PLUGIN_NAME);
+
+    match operation_str {
+        "add" => {
+            add_line(
+                clnrod_path.join(format!("{listtype_str}list.txt")),
+                pubkey_str,
+            )
+            .await?;
+        }
+        "remove" => {
+            remove_line(
+                clnrod_path.join(format!("{listtype_str}list.txt")),
+                pubkey_str,
+            )
+            .await?;
+        }
+        _ => return Err(anyhow!("operation must be `add` or `remove`")),
+    }
+
+    {
+        let mut pubkey_list = match listtype_str {
+            "allow" | "deny" => plugin.state().pubkey_list.lock(),
+            "zeroconf" => plugin.state().zero_conf_list.lock(),
+            _ => return Err(anyhow!("listtype must be `allow`, `deny` or `zeroconf`")),
+        };
+        match operation_str {
+            "add" => {
+                pubkey_list.insert(pubkey);
+            }
+            "remove" => {
+                pubkey_list.remove(&pubkey);
+            }
+            _ => return Err(anyhow!("operation must be `add` or `remove`")),
+        }
+    }
+
+    Ok(json!({"result":"success"}))
+}
+
+fn parse_managelists_args(args: &serde_json::Value) -> Result<(&str, &str, &str), Error> {
+    let (listtype_val, operation_val, pubkey_val) = match args {
+        serde_json::Value::Array(values) => (
+            values
+                .first()
+                .ok_or_else(|| anyhow!("listtype not found"))?,
+            values
+                .get(1)
+                .ok_or_else(|| anyhow!("operation not found"))?,
+            values.get(2).ok_or_else(|| anyhow!("pubkey not found"))?,
+        ),
+        serde_json::Value::Object(map) => (
+            map.get("listtype")
+                .ok_or_else(|| anyhow!("listtype not found"))?,
+            map.get("operation")
+                .ok_or_else(|| anyhow!("operation not found"))?,
+            map.get("pubkey")
+                .ok_or_else(|| anyhow!("pubkey not found"))?,
+        ),
+        _ => return Err(anyhow!("Expected array or object")),
+    };
+
+    let listtype_str = listtype_val
+        .as_str()
+        .ok_or_else(|| anyhow!("listtype must be a string"))?;
+    let operation_str = operation_val
+        .as_str()
+        .ok_or_else(|| anyhow!("operation must be a string"))?;
+    let pubkey_str = pubkey_val
+        .as_str()
+        .ok_or_else(|| anyhow!("pubkey must be a string"))?;
+    Ok((listtype_str, operation_str, pubkey_str))
+}
+
+struct FileLock {
+    lock_path: PathBuf,
+}
+
+impl FileLock {
+    async fn acquire(target: &Path) -> Result<Self, Error> {
+        let lock_path = PathBuf::from(format!("{}.lock", target.display()));
+
+        loop {
+            let result = fs::OpenOptions::new()
+                .write(true)
+                .create_new(true)
+                .open(&lock_path)
+                .await;
+
+            match result {
+                Ok(_) => {
+                    return Ok(Self { lock_path });
+                }
+                Err(e) if e.kind() == io::ErrorKind::AlreadyExists => {
+                    time::sleep(Duration::from_millis(50)).await;
+                }
+                Err(e) => return Err(e.into()),
+            }
+        }
+    }
+}
+
+impl Drop for FileLock {
+    fn drop(&mut self) {
+        let _ = std::fs::remove_file(&self.lock_path);
+    }
+}
+
+pub async fn add_line(path: impl AsRef<Path>, line: &str) -> Result<(), Error> {
+    let path = path.as_ref();
+
+    let _lock = FileLock::acquire(path).await?;
+
+    let mut file = fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(path)
+        .await?;
+
+    file.write_all(line.as_bytes()).await?;
+    file.write_all(b"\n").await?;
+    file.flush().await?;
+
+    Ok(())
+}
+
+pub async fn remove_line(path: impl AsRef<Path>, line: &str) -> Result<(), Error> {
+    let path = path.as_ref();
+
+    let _lock = FileLock::acquire(path).await?;
+
+    let mut content = String::new();
+
+    {
+        let mut file = fs::OpenOptions::new().read(true).open(path).await?;
+        file.read_to_string(&mut content).await?;
+    }
+
+    let filtered = content
+        .lines()
+        .filter(|l| *l != line)
+        .collect::<Vec<_>>()
+        .join("\n");
+
+    let tmp_path = PathBuf::from(format!("{}.tmp", path.display()));
+
+    {
+        let mut tmp = fs::OpenOptions::new()
+            .create(true)
+            .truncate(true)
+            .write(true)
+            .open(&tmp_path)
+            .await?;
+
+        tmp.write_all(filtered.as_bytes()).await?;
+
+        if !filtered.is_empty() {
+            tmp.write_all(b"\n").await?;
+        }
+
+        tmp.flush().await?;
+    }
+
+    // Atomic replacement on Unix.
+    // On Windows you may need to remove the destination first.
+    #[cfg(windows)]
+    {
+        let _ = fs::remove_file(path).await;
+    }
+
+    fs::rename(&tmp_path, path).await?;
+
+    Ok(())
 }
