@@ -6,10 +6,10 @@ description = "python dependencies for running tests"
 
 [dependency-groups]
 dev = [
-    "pytest>=7.4,<9",
+    "pytest>=7.4,<10",
     "pytest-xdist>=3.7,<4",
     "pytest-timeout>=2.4,<3",
-    "pyln-testing>=25.5",
-    "pyln-client>=25.5",
-    "pyln-proto>=25.5",
+    "pyln-testing>=25.9",
+    "pyln-client>=25.9",
+    "pyln-proto>=25.9",
 ]
