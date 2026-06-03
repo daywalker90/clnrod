@@ -8,6 +8,12 @@
 
 ## Changed
 - `clnrod-reload` will also reload `zeroconflist.txt`
+- `clnrod-testrule` now also works with positional arguments
+- updated `cln-rpc` and `cln-plugin` to v0.7
+- replaced `reqwest` with smaller `bitreq` dependency
+
+## Fixed
+- amboss API parsing fix for missing `extensions` field
 
 ## [0.5.1] - 2026-03-29
 

@@ -4,17 +4,17 @@ use std::{
     time::{Duration, Instant, SystemTime, UNIX_EPOCH},
 };
 
-use anyhow::{anyhow, Error};
+use anyhow::{Error, anyhow};
 use cln_plugin::Plugin;
 use cln_rpc::{
+    ClnRpc,
     model::{
         requests::{ListchannelsRequest, ListnodesRequest, ListpeerchannelsRequest, PingRequest},
         responses::ListnodesNodesAddressesType,
     },
     primitives::{Amount, ChannelState, PublicKey},
-    ClnRpc,
 };
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use tokio::time::{self, timeout};
 
 use crate::{
@@ -53,11 +53,15 @@ async fn get_oneml_data(
     }
 
     let response = match network {
-        name if name.eq_ignore_ascii_case("bitcoin") => {
-            reqwest::get(format!("https://1ml.com/node/{pubkey}/json")).await?
+        name if name.eq_ignore_ascii_case("bitcoin") || name.eq_ignore_ascii_case("regtest") => {
+            bitreq::get(format!("https://1ml.com/node/{pubkey}/json"))
+                .send_async()
+                .await?
         }
         name if name.eq_ignore_ascii_case("testnet") => {
-            reqwest::get(format!("https://1ml.com/testnet/node/{pubkey}/json")).await?
+            bitreq::get(format!("https://1ml.com/testnet/node/{pubkey}/json"))
+                .send_async()
+                .await?
         }
         _ => return Err(anyhow!("network not supported for 1ML: {network}")),
     };
@@ -68,8 +72,9 @@ async fn get_oneml_data(
         .as_millis();
     log::debug!("oneml_data: done");
 
-    if response.status().is_success() {
-        let json: Value = response.json().await?;
+    if response.status_code == 200 {
+        let json: Value = response.json()?;
+        log::debug!("oneml response: {json:#?}");
         if let Some(noderank) = json.get("noderank") {
             let one_ml_ranks: OneMl = serde_json::from_value(noderank.clone())?;
             Ok(one_ml_ranks)
@@ -83,10 +88,13 @@ async fn get_oneml_data(
             })
         }
     } else {
-        log::debug!("oneml_data: bad API response, status:{}", response.status());
+        log::debug!(
+            "oneml_data: bad API response, status:{}",
+            response.status_code
+        );
         Err(anyhow!(
             "1ML: bad API response, status:{}",
-            response.status()
+            response.status_code
         ))
     }
 }
@@ -140,12 +148,11 @@ async fn get_amboss_data(
     }
 
     let response = match network {
-        name if name.eq_ignore_ascii_case("bitcoin") => {
-            reqwest::Client::new()
-                .post("https://api.amboss.space/graphql")
-                .header(reqwest::header::CONTENT_TYPE, "application/json")
-                .json(&json!({"query":query, "variables":{"pubkey":pubkey.to_string()}}))
-                .send()
+        name if name.eq_ignore_ascii_case("bitcoin") || name.eq_ignore_ascii_case("regtest") => {
+            bitreq::post("https://api.amboss.space/graphql")
+                .with_header("Content-Type", "application/json")
+                .with_json(&json!({"query":query, "variables":{"pubkey":pubkey.to_string()}}))?
+                .send_async()
                 .await?
         }
         _ => return Err(anyhow!("network not supported for Amboss: {network}")),
@@ -157,16 +164,16 @@ async fn get_amboss_data(
         .as_millis();
     log::debug!("amboss_data: done");
 
-    if response.status().is_success() {
-        let json_response: serde_json::Value = response.json().await?;
-        log::debug!("{json_response:?}");
+    if response.status_code == 200 {
+        let json_response: serde_json::Value = response.json()?;
+        log::debug!("amboss resonse: {json_response:#?}");
         let amboss_response: AmbossResponse = serde_json::from_value(json_response)?;
 
         Ok(amboss_response)
     } else {
         Err(anyhow!(
             "Amboss: bad API response, status:{}",
-            response.status()
+            response.status_code
         ))
     }
 }
@@ -403,22 +410,22 @@ pub async fn collect_data(
             pings.iter().map(|y| *y as usize).sum::<usize>() / pings.len(),
         )?);
     }
-    log::debug!("collect_data: ping: {:?}", peer_data.ping);
+    log::debug!("collect_data: ping: {:#?}", peer_data.ping);
 
     if let Some(gdata) = gossip_task {
         peer_data.peerinfo = gdata.await??;
     }
-    log::debug!("collect_data: peerinfo: {:?}", peer_data.peerinfo);
+    log::debug!("collect_data: peerinfo: {:#?}", peer_data.peerinfo);
 
     if let Some(ad) = amboss_task {
         peer_data.amboss_data = Some(ad.await??.data);
     }
-    log::debug!("collect_data: amboss_data: {:?}", peer_data.amboss_data);
+    log::debug!("collect_data: amboss_data: {:#?}", peer_data.amboss_data);
 
     if let Some(ml) = oneml_task {
         peer_data.oneml_data = Some(ml.await??);
     }
-    log::debug!("collect_data: oneml_data: {:?}", peer_data.oneml_data);
+    log::debug!("collect_data: oneml_data: {:#?}", peer_data.oneml_data);
 
     let mut cache = plugin.state().peerdata_cache.lock();
     cache.insert(
