@@ -37,7 +37,7 @@ impl PluginState {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum BlockMode {
     Allow,
     Deny,

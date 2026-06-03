@@ -550,3 +550,151 @@ def test_clnrod_zeroconflist(node_factory, bitcoind, get_plugin):  # noqa: F811
     invoice = l1.rpc.call("invoice", [5000, "test", "description"])
 
     l2.rpc.call("xpay", [invoice["bolt11"]])
+
+
+def test_managelists_allow(node_factory, bitcoind, get_plugin):  # noqa: F811
+    l1, l2 = node_factory.get_nodes(
+        2,
+        opts=[
+            {
+                "plugin": get_plugin,
+                "clnrod-blockmode": "allow",
+                "clnrod-denymessage": "No thanks",
+            },
+            {},
+        ],
+    )
+
+    l2.fundwallet(10_000_000)
+
+    with pytest.raises(RpcError, match="You are configured to use the allowlist!"):
+        l1.rpc.call("clnrod-managelists", ["deny", "add", l2.info["id"]])
+
+    with pytest.raises(RpcError, match="No thanks"):
+        l2.rpc.fundchannel(
+            l1.info["id"] + "@localhost:" + str(l1.port),
+            1_000_000,
+            mindepth=1,
+            announce=True,
+        )
+
+    l1.rpc.call("clnrod-managelists", ["allow", "add", l2.info["id"]])
+
+    chan = l2.rpc.fundchannel(
+        l1.info["id"] + "@localhost:" + str(l1.port),
+        1_000_000,
+        mindepth=1,
+        announce=True,
+    )
+    bitcoind.generate_block(6, wait_for_mempool=chan["txid"])
+    sync_blockheight(bitcoind, [l1, l2])
+    wait_for(lambda: len(l1.rpc.listpeerchannels(l2.info["id"])["channels"]) > 0)
+
+    l1.rpc.call("clnrod-managelists", ["allow", "remove", l2.info["id"]])
+    with pytest.raises(RpcError, match="No thanks"):
+        l2.rpc.fundchannel(
+            l1.info["id"] + "@localhost:" + str(l1.port),
+            1_000_000,
+            mindepth=1,
+            announce=True,
+        )
+
+    l1.rpc.call("clnrod-managelists", ["allow", "add", l2.info["id"]])
+    with pytest.raises(
+        RpcError, match="You required zeroconf, but you're not on our allowlist"
+    ):
+        l2.rpc.fundchannel(
+            l1.info["id"] + "@localhost:" + str(l1.port),
+            1_000_000,
+            mindepth=0,
+            announce=True,
+            channel_type=[12, 22, 46, 50],
+        )
+
+    l1.rpc.call("clnrod-managelists", ["zeroconf", "add", l2.info["id"]])
+    chan = l2.rpc.fundchannel(
+        l1.info["id"] + "@localhost:" + str(l1.port),
+        1_000_000,
+        mindepth=0,
+        announce=True,
+        channel_type=[12, 22, 46, 50],
+    )
+    bitcoind.generate_block(6, wait_for_mempool=chan["txid"])
+    sync_blockheight(bitcoind, [l1, l2])
+    wait_for(lambda: len(l1.rpc.listpeerchannels(l2.info["id"])["channels"]) > 1)
+
+
+def test_managelists_deny(node_factory, bitcoind, get_plugin):  # noqa: F811
+    l1, l2 = node_factory.get_nodes(
+        2,
+        opts=[
+            {
+                "plugin": get_plugin,
+                "clnrod-blockmode": "deny",
+                "clnrod-denymessage": "No thanks",
+            },
+            {},
+        ],
+    )
+
+    l2.fundwallet(10_000_000)
+
+    with pytest.raises(RpcError, match="You are configured to use the denylist!"):
+        l1.rpc.call("clnrod-managelists", ["allow", "add", l2.info["id"]])
+
+    l1.rpc.call("clnrod-managelists", ["deny", "add", l2.info["id"]])
+
+    with pytest.raises(RpcError, match="No thanks"):
+        l2.rpc.fundchannel(
+            l1.info["id"] + "@localhost:" + str(l1.port),
+            1_000_000,
+            mindepth=1,
+            announce=True,
+        )
+
+    l1.rpc.call("clnrod-managelists", ["deny", "remove", l2.info["id"]])
+
+    chan = l2.rpc.fundchannel(
+        l1.info["id"] + "@localhost:" + str(l1.port),
+        1_000_000,
+        mindepth=1,
+        announce=True,
+    )
+    bitcoind.generate_block(6, wait_for_mempool=chan["txid"])
+    sync_blockheight(bitcoind, [l1, l2])
+    wait_for(lambda: len(l1.rpc.listpeerchannels(l2.info["id"])["channels"]) > 0)
+
+    l1.rpc.call("clnrod-managelists", ["deny", "add", l2.info["id"]])
+
+    with pytest.raises(RpcError, match="No thanks"):
+        l2.rpc.fundchannel(
+            l1.info["id"] + "@localhost:" + str(l1.port),
+            1_000_000,
+            mindepth=1,
+            announce=True,
+        )
+
+    l1.rpc.call("clnrod-managelists", ["deny", "remove", l2.info["id"]])
+
+    with pytest.raises(
+        RpcError, match="You required zeroconf, but you're not on our allowlist"
+    ):
+        l2.rpc.fundchannel(
+            l1.info["id"] + "@localhost:" + str(l1.port),
+            1_000_000,
+            mindepth=0,
+            announce=True,
+            channel_type=[12, 22, 46, 50],
+        )
+
+    l1.rpc.call("clnrod-managelists", ["zeroconf", "add", l2.info["id"]])
+    chan = l2.rpc.fundchannel(
+        l1.info["id"] + "@localhost:" + str(l1.port),
+        1_000_000,
+        mindepth=0,
+        announce=True,
+        channel_type=[12, 22, 46, 50],
+    )
+    bitcoind.generate_block(6, wait_for_mempool=chan["txid"])
+    sync_blockheight(bitcoind, [l1, l2])
+    wait_for(lambda: len(l1.rpc.listpeerchannels(l2.info["id"])["channels"]) > 1)

@@ -20,6 +20,8 @@ use rpc::{clnrod_reload, clnrod_testmail, clnrod_testping, clnrod_testrule};
 use structs::PluginState;
 use tokio::time;
 
+use crate::rpc::clnrod_managelists;
+
 mod collect;
 mod config;
 mod hooks;
@@ -117,6 +119,11 @@ async fn main() -> Result<(), anyhow::Error> {
             RpcMethodBuilder::new("clnrod-testping", clnrod_testping)
                 .description("Test the ping to a node")
                 .usage("pubkey [count] [length]"),
+        )
+        .rpcmethod_from_builder(
+            RpcMethodBuilder::new("clnrod-managelists", clnrod_managelists)
+                .description("Manage allow, block or zeroconf list files")
+                .usage("listtype operation pubkey"),
         )
         .setconfig_callback(setconfig_callback)
         .option(opt_deny_message)

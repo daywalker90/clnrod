@@ -94,6 +94,12 @@ If you want to make sure that no channels open to you without going through this
 ## Rpc methods
 New rpc methods with this plugin:
 
+* **clnrod-managelists** *listtype* *operation* *pubkey*
+    * add or remove node public keys to ``allowlist.txt``/``denylist.txt``/``zeroconflist.txt``
+    * will create a ``allowlist.txt.lock``/``denylist.txt.lock``/``zeroconflist.txt.lock`` to prevent contention
+    * *listtype* is one of `allow`, `deny` or `zeroconf`
+    * *operation* is one of `add` or `remove`
+    * *pubkey* is the node public key to add or remove from the allow, deny or zeroconf list
 * **clnrod-reload**
     * reload ``allowlist.txt``/``denylist.txt``/``zeroconflist.txt``
 * **clnrod-testrule** *pubkey* *public* *their_funding_sat* *rule*
