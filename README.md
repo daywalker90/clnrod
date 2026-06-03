@@ -1,18 +1,6 @@
 <table border="0">
   <tr>
     <td>
-      <a href="https://github.com/daywalker90/clnrod/actions/workflows/latest_v25.05.yml">
-        <img src="https://github.com/daywalker90/clnrod/actions/workflows/latest_v25.05.yml/badge.svg?branch=master">
-      </a>
-    </td>
-    <td>
-      <a href="https://github.com/daywalker90/clnrod/actions/workflows/master_v25.05.yml">
-        <img src="https://github.com/daywalker90/clnrod/actions/workflows/master_v25.05.yml/badge.svg?branch=master">
-      </a>
-    </td>
-  </tr>
-  <tr>
-    <td>
       <a href="https://github.com/daywalker90/clnrod/actions/workflows/latest_v25.09.yml">
         <img src="https://github.com/daywalker90/clnrod/actions/workflows/latest_v25.09.yml/badge.svg?branch=master">
       </a>
@@ -47,10 +35,22 @@
       </a>
     </td>
   </tr>
+  <tr>
+    <td>
+      <a href="https://github.com/daywalker90/clnrod/actions/workflows/latest_v26.06.yml">
+        <img src="https://github.com/daywalker90/clnrod/actions/workflows/latest_v26.06.yml/badge.svg?branch=master">
+      </a>
+    </td>
+    <td>
+      <a href="https://github.com/daywalker90/clnrod/actions/workflows/master_v26.06.yml">
+        <img src="https://github.com/daywalker90/clnrod/actions/workflows/master_v26.06.yml/badge.svg?branch=master">
+      </a>
+    </td>
+  </tr>
 </table>
 
 # clnrod
-Core lightning (CLN) plugin to allow/deny incoming channel opens based on lists and/or a custom rule.
+Core lightning (CLN) plugin to allow/deny incoming channel opens (including zeroconf configuration) based on lists and/or a custom rule.
 
 * [Installation](#installation)
 * [Building](#building)
@@ -64,10 +64,9 @@ Release binaries for
 * x86_64-linux
 * armv7-linux (Raspberry Pi 32bit)
 * aarch64-linux (Raspberry Pi 64bit)
+* universal-apple-darwin (macOS)
 
 can be found on the [release](https://github.com/daywalker90/clnrod/releases) page. If you are unsure about your architecture you can run ``uname -m``.
-
-Release binaries require ``glibc>=2.31``, which you can check with ``ldd --version``.
 
 # Building
 You can build the plugin yourself instead of using the release binaries.
