@@ -496,7 +496,7 @@ def test_email_activation(node_factory, get_plugin):  # noqa: F811
     l1.daemon.wait_for_log(r"plugin-clnrod: Will try to send notifications via email")
 
 
-def test_clnrod_zeroconflist(node_factory, bitcoind, get_plugin):  # noqa: F811
+def test_clnrod_zeroconflist(node_factory, get_plugin):  # noqa: F811
     l1, l2 = node_factory.get_nodes(
         2,
         opts=[
@@ -560,8 +560,9 @@ def test_managelists_allow(node_factory, bitcoind, get_plugin):  # noqa: F811
                 "plugin": get_plugin,
                 "clnrod-blockmode": "allow",
                 "clnrod-denymessage": "No thanks",
+                "broken_log": ".*Illegal gossip state transition.*",
             },
-            {},
+            {"broken_log": ".*Illegal gossip state transition.*"},
         ],
     )
 
@@ -632,8 +633,9 @@ def test_managelists_deny(node_factory, bitcoind, get_plugin):  # noqa: F811
                 "plugin": get_plugin,
                 "clnrod-blockmode": "deny",
                 "clnrod-denymessage": "No thanks",
+                "broken_log": ".*Illegal gossip state transition.*",
             },
-            {},
+            {"broken_log": ".*Illegal gossip state transition.*"},
         ],
     )
 
