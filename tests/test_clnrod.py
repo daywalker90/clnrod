@@ -698,3 +698,23 @@ def test_managelists_deny(node_factory, bitcoind, get_plugin):  # noqa: F811
     bitcoind.generate_block(6, wait_for_mempool=chan["txid"])
     sync_blockheight(bitcoind, [l1, l2])
     wait_for(lambda: len(l1.rpc.listpeerchannels(l2.info["id"])["channels"]) > 1)
+
+
+def test_external_datasources(node_factory, get_plugin):  # noqa: F811
+    l1 = node_factory.get_node(
+        options={
+            "plugin": get_plugin,
+            "clnrod-blockmode": "deny",
+            "clnrod-denymessage": "No thanks",
+        }
+    )
+
+    l1.rpc.call(
+        "clnrod-testrule",
+        [
+            "0380ef0209ff1b46c38a37cd40f613d1dae3eba481a909459d6c1434a0e56e5d8c",
+            True,
+            10_000_000,
+            "oneml_channelcount > 0 && amboss_has_nostr == true",
+        ],
+    )

@@ -59,7 +59,7 @@ pub async fn clnrod_testrule(
     args: serde_json::Value,
 ) -> Result<serde_json::Value, Error> {
     let config = plugin.state().config.lock().clone();
-    match &args {
+    let (pubkey, public, their_funding_msat, rule) = match &args {
         serde_json::Value::Object(o) => {
             let pubkey = if let Some(pk) = o.get("pubkey") {
                 PublicKey::from_str(pk.as_str().ok_or_else(|| anyhow!("bad pubkey string"))?)
@@ -82,56 +82,89 @@ pub async fn clnrod_testrule(
                 return Err(anyhow!("public not set"));
             };
 
-            if let Some(r) = o.get("rule") {
-                let rule = r
-                    .as_str()
-                    .ok_or_else(|| anyhow!("rule: not a valid string"))?;
-                let data = collect_data(
-                    &plugin,
-                    pubkey,
-                    Amount::from_msat(their_funding_msat),
-                    ChannelFlags { public },
-                    rule,
-                    config.ping_length,
-                )
-                .await?;
-                let parse_result = parse_rule(rule)?;
-                let parser = ClnrodParser::new();
-                let (evaluate_result, reject_reason) = evaluate_rule(&parser, parse_result, &data)?;
-                let reject_reason = if let Some(rej_res) = reject_reason {
-                    rej_res
-                } else {
-                    "None".to_string()
-                };
-
-                let config = plugin.state().config.lock().clone();
-                if config.send_mail {
-                    notify(
-                        &plugin,
-                        "Clnrod TEST RULE",
-                        &format!(
-                            "Called clnrod-testrule, custom_rule_result: {evaluate_result}. \
-                        Offending comparisons: {reject_reason}"
-                        ),
-                        Some(pubkey),
-                        NotifyVerbosity::Error,
-                    )
-                    .await;
-                }
-
-                Ok(json!({"custom_rule_result":evaluate_result, "reject_reason":reject_reason}))
+            let rule = if let Some(r) = o.get("rule") {
+                r.as_str()
+                    .ok_or_else(|| anyhow!("rule: not a valid string"))?
             } else {
-                Err(anyhow!(
+                return Err(anyhow!(
                     "Invalid input! Use command like this: lightning-cli clnrod-testparse \
                     rule='x == 5' pubkey=XXXXX their_funding_sat=50000 public=true"
-                ))
-            }
+                ));
+            };
+            (pubkey, public, their_funding_msat, rule)
         }
-        _ => Err(anyhow!(
-            "Invalid input! Use command like this: lightning-cli clnrod-testparse rule='x == 5' \
+        serde_json::Value::Array(a) => {
+            let pubkey = if let Some(pk) = a.first() {
+                PublicKey::from_str(pk.as_str().ok_or_else(|| anyhow!("bad pubkey string"))?)
+                    .context("invalid pubkey")?
+            } else {
+                return Err(anyhow!("no pubkey given"));
+            };
+            let public = if let Some(p) = a.get(1) {
+                p.as_bool()
+                    .ok_or_else(|| anyhow!("public: not a valid boolean"))?
+            } else {
+                return Err(anyhow!("public not set"));
+            };
+            let their_funding_msat = if let Some(msats) = a.get(2) {
+                msats
+                    .as_u64()
+                    .ok_or_else(|| anyhow!("their_funding_sat: not a valid number"))?
+                    * 1000
+            } else {
+                return Err(anyhow!("their_funding_sat not set"));
+            };
+            let rule = if let Some(r) = a.get(3) {
+                r.as_str()
+                    .ok_or_else(|| anyhow!("rule: not a valid string"))?
+            } else {
+                return Err(anyhow!(
+                    "Invalid input! Use command like this: lightning-cli clnrod-testparse \
+                    rule='x == 5' pubkey=XXXXX their_funding_sat=50000 public=true"
+                ));
+            };
+            (pubkey, public, their_funding_msat, rule)
+        }
+        _ => {
+            return Err(anyhow!(
+                "Invalid input! Use command like this: lightning-cli clnrod-testparse rule='x == 5' \
             pubkey=XXXXX their_funding_sat=50000 public=true"
-        )),
+            ));
+        }
+    };
+    let data = collect_data(
+        &plugin,
+        pubkey,
+        Amount::from_msat(their_funding_msat),
+        ChannelFlags { public },
+        rule,
+        config.ping_length,
+    )
+    .await?;
+    let parse_result = parse_rule(rule)?;
+    let parser = ClnrodParser::new();
+    let (evaluate_result, reject_reason) = evaluate_rule(&parser, parse_result, &data)?;
+    let reject_reason = if let Some(rej_res) = reject_reason {
+        rej_res
+    } else {
+        "None".to_string()
+    };
+
+    let config = plugin.state().config.lock().clone();
+    if config.send_mail {
+        notify(
+            &plugin,
+            "Clnrod TEST RULE",
+            &format!(
+                "Called clnrod-testrule, custom_rule_result: {evaluate_result}. \
+                        Offending comparisons: {reject_reason}"
+            ),
+            Some(pubkey),
+            NotifyVerbosity::Error,
+        )
+        .await;
     }
+    Ok(json!({"custom_rule_result":evaluate_result, "reject_reason":reject_reason}))
 }
 
 pub async fn clnrod_testmail(

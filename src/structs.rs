@@ -268,7 +268,7 @@ pub struct OneMl {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct AmbossResponse {
     pub data: AmbossNodeData,
-    pub extensions: AmbossExtensions,
+    pub extensions: Option<AmbossExtensions>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
