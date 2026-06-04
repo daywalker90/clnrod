@@ -867,20 +867,20 @@ wheels = [
 
 [[package]]
 name = "pyln-client"
-version = "26.4.1"
+version = "26.6"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "pyln-bolt7" },
     { name = "pyln-proto" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/28/fe/e1e19c59dd7520dec2de992f0a3da6292db24162c9830be279616a7b8810/pyln_client-26.4.1.tar.gz", hash = "sha256:26dfb21ac39c61b7ab7a40db18798b002f3f19a179ff2ec40374a9419d032050", size = 92170, upload-time = "2026-04-24T04:53:08.46Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/8a/eb/832933a1de08486fe0e27d0adee0a51b7b8f655d889f2b2df5eb920ac133/pyln_client-26.6.tar.gz", hash = "sha256:e41dccb6c17252ef2b8030ffdb263abe53a4956ed4c64d128a545bd471571d43", size = 92469, upload-time = "2026-06-04T12:43:41.022Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/65/90/d3b5e11f85cf076b1011a1ea6031ced3745abf451e47a1697216e1ea7c29/pyln_client-26.4.1-py3-none-any.whl", hash = "sha256:a9afba9b117818023bf4567a94c34633e9f2e89f0e1ca11e433329a2c678a685", size = 37673, upload-time = "2026-04-24T04:53:07.187Z" },
+    { url = "https://files.pythonhosted.org/packages/1e/c5/08f317e776489c344156bbbf3665c2390e182bc5b5066619edc141a177a6/pyln_client-26.6-py3-none-any.whl", hash = "sha256:7ff2d5c7c306f10e6b54ab08387c405ff5c7b803e88a6b1bed87e90a27932732", size = 37958, upload-time = "2026-06-04T12:43:42.097Z" },
 ]
 
 [[package]]
 name = "pyln-proto"
-version = "26.4.1"
+version = "26.6"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "base58" },
@@ -889,14 +889,14 @@ dependencies = [
     { name = "cryptography" },
     { name = "pysocks" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/8c/4b/c8d676ad84d6066553b203668c0e36f45cfae0a4d7140eb88aed6d65b38b/pyln_proto-26.4.1.tar.gz", hash = "sha256:d73f261bacc06a6a613dcece05fc429699b740a4673f24dffb7c41bd3542d589", size = 44864, upload-time = "2026-04-24T04:53:10.196Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/59/db/876ee827e88180b3e6c6d95683c0c88ac3a5da13aa9b18a5c57bc10f8b99/pyln_proto-26.6.tar.gz", hash = "sha256:a764fa309a18bd8f4baa2ede96a1c6b3ca30c4150cf6ce6e32d62b714ac2d557", size = 44868, upload-time = "2026-06-04T12:44:07.6Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/a3/f1/6541b6cd8a017d3505fcb49885d3f01b8e6bb09e40db18e686edb9edeb99/pyln_proto-26.4.1-py3-none-any.whl", hash = "sha256:b5d10d5e69cf3debd9b289e2ffa49713fca6c349a71cb0eaf9e733024f15b3da", size = 31833, upload-time = "2026-04-24T04:53:08.686Z" },
+    { url = "https://files.pythonhosted.org/packages/1d/84/da8a4a2149f70e09fb39edf5860dfb2e56b00a020ef6aa49083f715a1ebf/pyln_proto-26.6-py3-none-any.whl", hash = "sha256:24e5d81b2d9930349d039be3b6c9e3da115ad0b067868bb025aea55f385a0643", size = 31813, upload-time = "2026-06-04T12:44:08.345Z" },
 ]
 
 [[package]]
 name = "pyln-testing"
-version = "26.4.1"
+version = "26.6"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "cheroot" },
@@ -911,9 +911,9 @@ dependencies = [
     { name = "python-bitcoinlib" },
     { name = "requests" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/64/73/d969847564591fe16633b11bf8be9f8184ccd885e367acee171e9fd6d2d8/pyln_testing-26.4.1.tar.gz", hash = "sha256:0a40d66ec2f0840df95bdbc4845c214aede01e9d7a89a422f5b6b00a89e63690", size = 52617, upload-time = "2026-04-24T04:53:10.904Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/b9/d4/2b3082722d555f0941b2ab2bf636482c73caea5a2c05c87a0d69bc7b1e18/pyln_testing-26.6.tar.gz", hash = "sha256:d76a12a190baae7253b49a8956efbb6d13f9f004a378810edd42c6ba11dd3238", size = 53213, upload-time = "2026-06-04T12:43:41.924Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/c6/ad/603ff35f7b60bcc6cf364a101c58a73887132063f0773767108946361ed2/pyln_testing-26.4.1-py3-none-any.whl", hash = "sha256:dd0e9d8a865593ddc9a14ef43e9aaec0fe0d348ce9ec2fcd23807a35c98c9e8c", size = 54381, upload-time = "2026-04-24T04:53:09.599Z" },
+    { url = "https://files.pythonhosted.org/packages/cf/b5/4db924e9879f3de0f08cb5370b44859759675edd7cf71bdffe7651d3b59f/pyln_testing-26.6-py3-none-any.whl", hash = "sha256:83cb51cd7dd00056ecf803d3cab0d0deb68eab3ccef336cda14bd15cae1829fb", size = 54964, upload-time = "2026-06-04T12:43:40.812Z" },
 ]
 
 [[package]]
