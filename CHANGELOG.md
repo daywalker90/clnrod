@@ -6,13 +6,13 @@
 - new file to allow for zeroconf channels: `zeroconflist.txt`. If a channel tries to open a zeroconf channel (bit 50: `option_zeroconf`) it must be in the `zeroconflist.txt` file to be allowed to do so. All other restrictions from your block mode still apply!
 - `clnrod-managelists`: manage all list files with this new rpc, see README.md for documentation
 
-## Changed
+### Changed
 - `clnrod-reload` will also reload `zeroconflist.txt`
 - `clnrod-testrule` now also works with positional arguments
 - updated `cln-rpc` and `cln-plugin` to v0.7
 - replaced `reqwest` with smaller `bitreq` dependency
 
-## Fixed
+### Fixed
 - amboss API parsing fix for missing `extensions` field
 
 ## [0.5.1] - 2026-03-29
