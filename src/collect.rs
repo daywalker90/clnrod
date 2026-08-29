@@ -57,11 +57,13 @@ async fn get_oneml_data(
     let response = match network {
         name if name.eq_ignore_ascii_case("bitcoin") || name.eq_ignore_ascii_case("regtest") => {
             bitreq::get(format!("https://1ml.com/node/{pubkey}/json"))
+                .with_timeout(30)
                 .send_async()
                 .await?
         }
         name if name.eq_ignore_ascii_case("testnet") => {
             bitreq::get(format!("https://1ml.com/testnet/node/{pubkey}/json"))
+                .with_timeout(30)
                 .send_async()
                 .await?
         }
@@ -154,6 +156,7 @@ async fn get_amboss_data(
             bitreq::post("https://api.amboss.space/graphql")
                 .with_header("Content-Type", "application/json")
                 .with_json(&json!({"query":query, "variables":{"pubkey":pubkey.to_string()}}))?
+                .with_timeout(30)
                 .send_async()
                 .await?
         }
