@@ -2,7 +2,7 @@ use std::{
     io,
     path::{Path, PathBuf},
     str::FromStr,
-    time::Duration,
+    time::{Duration, Instant, SystemTime},
 };
 
 use anyhow::{Context, Error, anyhow};
@@ -391,6 +391,9 @@ fn parse_managelists_args(args: &serde_json::Value) -> Result<(&str, &str, &str)
     Ok((listtype_str, operation_str, pubkey_str))
 }
 
+const LOCK_STALE_SECS: u64 = 60;
+const LOCK_ACQUIRE_TIMEOUT_SECS: u64 = 120;
+
 struct FileLock {
     lock_path: PathBuf,
 }
@@ -398,24 +401,48 @@ struct FileLock {
 impl FileLock {
     async fn acquire(target: &Path) -> Result<Self, Error> {
         let lock_path = PathBuf::from(format!("{}.lock", target.display()));
+        let start = Instant::now();
 
         loop {
-            let result = fs::OpenOptions::new()
+            match fs::OpenOptions::new()
                 .write(true)
                 .create_new(true)
                 .open(&lock_path)
-                .await;
-
-            match result {
-                Ok(_) => {
-                    return Ok(Self { lock_path });
-                }
+                .await
+            {
+                Ok(_) => return Ok(Self { lock_path }),
                 Err(e) if e.kind() == io::ErrorKind::AlreadyExists => {
+                    if lock_is_stale(&lock_path).await {
+                        log::warn!(
+                            "Removing stale lock file {} (older than {LOCK_STALE_SECS}s)",
+                            lock_path.display()
+                        );
+                        let _ = fs::remove_file(&lock_path).await;
+                        continue;
+                    }
+                    if start.elapsed() >= Duration::from_secs(LOCK_ACQUIRE_TIMEOUT_SECS) {
+                        return Err(anyhow!(
+                            "Timed out after {LOCK_ACQUIRE_TIMEOUT_SECS}s waiting for lock {}",
+                            lock_path.display()
+                        ));
+                    }
                     time::sleep(Duration::from_millis(50)).await;
                 }
                 Err(e) => return Err(e.into()),
             }
         }
+    }
+}
+
+async fn lock_is_stale(lock_path: &Path) -> bool {
+    match fs::metadata(lock_path).await {
+        Ok(meta) => match meta.modified() {
+            Ok(modified) => SystemTime::now()
+                .duration_since(modified)
+                .is_ok_and(|age| age.as_secs() >= LOCK_STALE_SECS),
+            Err(_) => false,
+        },
+        Err(_) => false,
     }
 }
 
