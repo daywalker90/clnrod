@@ -214,10 +214,10 @@ fn check_option(config: &mut Config, name: &str, value: &options::Value) -> Resu
                 .context(format!("{OPT_SMTP_PORT} out of valid range"))?;
         }
         n if n.eq(OPT_EMAIL_FROM) => {
-            config.email_from = Some(Mailbox::from_str(value.as_str().unwrap())?)
+            config.email_from = Some(Mailbox::from_str(value.as_str().unwrap())?);
         }
         n if n.eq(OPT_EMAIL_TO) => {
-            config.email_to = Some(Mailbox::from_str(value.as_str().unwrap())?)
+            config.email_to = Some(Mailbox::from_str(value.as_str().unwrap())?);
         }
         n if n.eq(OPT_NOTIFY_VERBOSITY) => {
             config.notify_verbosity = NotifyVerbosity::from_str(value.as_str().unwrap())?;
@@ -317,12 +317,16 @@ pub async fn setconfig_callback(
     }
 
     if old_blockmode != new_blockmode {
-        read_pubkey_list(
+        if let Err(e) = read_pubkey_list(
             plugin.state().pubkey_list.clone(),
             &Path::new(&plugin.configuration().lightning_dir).join(PLUGIN_NAME),
             new_blockmode,
         )
-        .await?;
+        .await
+        {
+            plugin.state().config.lock().block_mode = old_blockmode;
+            return Err(e);
+        }
     }
 
     if name.eq(OPT_CUSTOM_RULE) {
@@ -345,8 +349,8 @@ fn activate_mail(config: &mut Config) {
         && !config.smtp_password.is_empty()
         && !config.smtp_server.is_empty()
         && config.smtp_port > 0
-        && !config.email_from.is_none()
-        && !config.email_to.is_none()
+        && config.email_from.is_some()
+        && config.email_to.is_some()
     {
         log::info!("Will try to send notifications via email");
         config.send_mail = true;
