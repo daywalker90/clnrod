@@ -1,5 +1,25 @@
 # Changelog
 
+## [0.6.1] - 2026-08-29
+
+### Changed
+- the ``ping`` custom rule variable now uses the median of all ping measurements instead of the average
+- ``clnrod-testping`` now returns an accurate median (mean of the two middle values if an even number of pings was measured)
+- email notifications are no longer awaited during the channel open hook, so channel opening is no longer delayed by a slow SMTP server
+- ``clnrod-managelists`` lock files are now automatically removed if they are stale (older than 60 seconds) and acquisition fails with an error after 120 seconds instead of hanging forever
+- 1ML and Amboss data fetches now have an explicit timeout
+- custom rules with integer literals greater than ``u64::MAX`` are rejected at ``setconfig`` time
+- updated dependencies
+
+### Fixed
+- switching the block mode with ``setconfig`` now reloads the correct list file (``allowlist.txt``/``denylist.txt``); if the reload fails the previous block mode is restored
+- ``clnrod-testrule`` no longer uses cached data and always fetches fresh data for the tested peer
+- ``clnrod-testrule`` no longer overflows when given a very large ``their_funding_sat``
+- empty or comment lines (``#`` and ``//``) in the list files are now ignored
+- improved email address parsing for ``clnrod-email-from``/``clnrod-email-to``
+- cache entries are now evicted once they are older than one hour (checked every 10 minutes), and the peer data cache is capped at 1000 entries (oldest entry is evicted), so it can no longer grow without bound
+- fixed a typo in the ``clnrod-testrule`` error message
+
 ## [0.6.0] - 2026-06-07
 
 ### Added

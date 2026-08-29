@@ -96,11 +96,13 @@ New rpc methods with this plugin:
 * **clnrod-managelists** *listtype* *operation* *pubkey*
     * add or remove node public keys to ``allowlist.txt``/``denylist.txt``/``zeroconflist.txt``
     * will create a ``allowlist.txt.lock``/``denylist.txt.lock``/``zeroconflist.txt.lock`` to prevent contention
+    * stale lock files (older than 60 seconds) are removed automatically, and acquisition fails with an error after 120 seconds
     * *listtype* is one of `allow`, `deny` or `zeroconf`
     * *operation* is one of `add` or `remove`
     * *pubkey* is the node public key to add or remove from the allow, deny or zeroconf list
 * **clnrod-reload**
     * reload ``allowlist.txt``/``denylist.txt``/``zeroconflist.txt``
+    * empty lines and lines starting with ``#`` or ``//`` are ignored in all list files
 * **clnrod-testrule** *pubkey* *public* *their_funding_sat* *rule*
     * test your custom *rule* with a fake channel opening by a peer with *pubkey* who will make the channel *public* and *their_funding_sat* big
     * example: ``lightning-cli clnrod-testrule -k pubkey=02eadbd9e7557375161df8b646776a547c5cbc2e95b3071ec81553f8ec2cea3b8c public=true their_funding_sat=1000000 rule='amboss_terminal_web_rank < 1000'`` 
@@ -108,6 +110,7 @@ New rpc methods with this plugin:
     * send a test mail to check your email config
 * **clnrod-testping** *pubkey* [*count*] [*length*]
     * measure the time it takes in ms to send a *length* (Defaults to ``clnrod-pinglength``) bytes message to the node with *pubkey* and back. Pings *count* (Default: 3) times.
+    * returns the minimum, average, median and maximum ping time in ms
 
 
 ## Blockmode: allow
@@ -142,10 +145,10 @@ The custom rule can make use of the following symbols:
 * a boolean value is either ``true``, ``false``, ``1`` or ``0``
 
 ### Variables
-Variables starting with ``cln_`` query your own gossip, ``amboss_`` the [Amboss](https://amboss.space) API and ``oneml_`` the [1ML](https://1ml.com/) API. There is an one hour cache for collecting data that will be reset if you change the ``clnrod-customrule`` option.
+Variables starting with ``cln_`` query your own gossip, ``amboss_`` the [Amboss](https://amboss.space) API and ``oneml_`` the [1ML](https://1ml.com/) API. There is an one hour cache for collecting data (capped at 1000 entries) that will be reset if you change the ``clnrod-customrule`` option.
 * ``their_funding_sat``: how much sats they are willing to open with on their side
 * ``public``: if the peer intends to open the channel as public this will be ``true`` otherwise ``false``
-* ``ping`` ( :warning: DO NOT USE ON CLN 25.05 OR OLDER: your CLN ping command might get stuck and require a node restart!): time it takes in ms to send a ``clnrod-pinglength`` (Default: 256) bytes packet to the opener and back. Timeouts and errors will log but not flat out reject the channel, instead the timeout value of 5000 will be used. It is recommended to have email notifications on or watch the logs for ping timeouts (``Clnrod ping TIMEOUT``)
+* ``ping`` ( :warning: DO NOT USE ON CLN 25.05 OR OLDER: your CLN ping command might get stuck and require a node restart!): time it takes in ms to send a ``clnrod-pinglength`` (Default: 256) bytes packet to the opener and back. Defaults to the median of 3 pings. Timeouts and errors will log but not flat out reject the channel, instead the timeout value of 5000 will be used. It is recommended to have email notifications on or watch the logs for ping timeouts (``Clnrod ping TIMEOUT``)
 * ``cln_node_capacity_sat``: the total capacity of the peer in sats
 * ``cln_channel_count``: the number of channels of the peer
 * ``cln_multi_channel_count``: Restrict the number of multiple channels between you and the peer. Only channels in an active or opening state are counted. Includes the channel from the opening attempt.
