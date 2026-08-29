@@ -32,6 +32,8 @@ use crate::{
     },
 };
 
+pub const CACHE_TTL: u64 = 3_600;
+
 async fn get_oneml_data(
     pubkey: PublicKey,
     network: String,
@@ -335,7 +337,7 @@ pub async fn collect_data(
 
     {
         if let Some(cache) = plugin.state().peerdata_cache.lock().get(&pubkey) {
-            if unix_now_s - cache.age <= 3600 {
+            if unix_now_s - cache.age <= CACHE_TTL {
                 log::debug!("collect_data: cache hit");
                 cache_hit = true;
                 peer_data.ping = cache.peer_data.ping;

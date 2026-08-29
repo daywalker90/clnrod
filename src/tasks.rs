@@ -1,9 +1,12 @@
-use std::{path::Path, time::Instant};
+use std::{
+    path::Path,
+    time::{Instant, SystemTime, UNIX_EPOCH},
+};
 
 use cln_plugin::Plugin;
-use cln_rpc::{model::requests::ListnodesRequest, ClnRpc};
+use cln_rpc::{ClnRpc, model::requests::ListnodesRequest};
 
-use crate::structs::PluginState;
+use crate::{collect::CACHE_TTL, structs::PluginState};
 
 pub async fn refresh_alias_cache(plugin: Plugin<PluginState>) -> Result<(), anyhow::Error> {
     let now = Instant::now();
@@ -27,4 +30,14 @@ pub async fn refresh_alias_cache(plugin: Plugin<PluginState>) -> Result<(), anyh
         now.elapsed().as_millis()
     );
     Ok(())
+}
+
+pub fn evict_cache(plugin: &Plugin<PluginState>) {
+    let now_unix = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap()
+        .as_secs();
+
+    let mut caches = plugin.state().peerdata_cache.lock();
+    caches.retain(|_, v| now_unix - v.age <= CACHE_TTL);
 }
