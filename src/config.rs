@@ -76,6 +76,9 @@ pub async fn read_pubkey_list(
     let file_reader = BufReader::new(block_file);
     let mut file_lines = file_reader.lines();
     while let Some(line) = file_lines.next_line().await? {
+        if line.is_empty() || line.starts_with('#') || line.starts_with("//") {
+            continue;
+        }
         new_pubkey_list.insert(PublicKey::from_str(&line)?);
     }
 
@@ -107,6 +110,9 @@ pub async fn read_zeroconf_list(
     let file_reader = BufReader::new(block_file);
     let mut file_lines = file_reader.lines();
     while let Some(line) = file_lines.next_line().await? {
+        if line.is_empty() || line.starts_with('#') || line.starts_with("//") {
+            continue;
+        }
         new_zero_conf_list.insert(PublicKey::from_str(&line)?);
     }
 
