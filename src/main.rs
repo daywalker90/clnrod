@@ -167,6 +167,14 @@ async fn main() -> Result<(), anyhow::Error> {
                     time::sleep(Duration::from_secs(60 * 60)).await;
                 }
             });
+            let evictclone = plugin.clone();
+            tokio::spawn(async move {
+                time::sleep(Duration::from_secs(60 * 10)).await;
+                loop {
+                    tasks::evict_cache(&evictclone);
+                    time::sleep(Duration::from_secs(60 * 10)).await;
+                }
+            });
             plugin.join().await
         }
         _ => Err(anyhow!("Error starting clnrod!")),
