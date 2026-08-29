@@ -25,8 +25,8 @@ async fn send_mail(config: &Config, subject: &str, body: &str, html: bool) -> Re
     };
 
     let email = Message::builder()
-        .from(config.email_from.parse().unwrap())
-        .to(config.email_to.parse().unwrap())
+        .from(config.email_from.clone().unwrap())
+        .to(config.email_to.clone().unwrap())
         .subject(subject)
         .header(header)
         .body(body.to_owned())
@@ -51,7 +51,7 @@ async fn send_mail(config: &Config, subject: &str, body: &str, html: bool) -> Re
         log::info!(
             "Sent email with subject: `{}` to: `{}`",
             subject,
-            config.email_to
+            config.email_to.as_ref().unwrap()
         );
         Ok(())
     } else {

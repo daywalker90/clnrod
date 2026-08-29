@@ -3,6 +3,7 @@ use std::{collections::HashSet, path::Path, str::FromStr, sync::Arc};
 use anyhow::{Context, Error, anyhow};
 use cln_plugin::{ConfiguredPlugin, Plugin, options};
 use cln_rpc::{RpcError, primitives::PublicKey};
+use lettre::message::Mailbox;
 use parking_lot::Mutex;
 use serde_json::json;
 use tokio::{
@@ -206,8 +207,12 @@ fn check_option(config: &mut Config, name: &str, value: &options::Value) -> Resu
             config.smtp_port = u16::try_from(value.as_i64().unwrap())
                 .context(format!("{OPT_SMTP_PORT} out of valid range"))?;
         }
-        n if n.eq(OPT_EMAIL_FROM) => config.email_from = value.as_str().unwrap().to_string(),
-        n if n.eq(OPT_EMAIL_TO) => config.email_to = value.as_str().unwrap().to_string(),
+        n if n.eq(OPT_EMAIL_FROM) => {
+            config.email_from = Some(Mailbox::from_str(value.as_str().unwrap())?)
+        }
+        n if n.eq(OPT_EMAIL_TO) => {
+            config.email_to = Some(Mailbox::from_str(value.as_str().unwrap())?)
+        }
         n if n.eq(OPT_NOTIFY_VERBOSITY) => {
             config.notify_verbosity = NotifyVerbosity::from_str(value.as_str().unwrap())?;
         }
@@ -334,8 +339,8 @@ fn activate_mail(config: &mut Config) {
         && !config.smtp_password.is_empty()
         && !config.smtp_server.is_empty()
         && config.smtp_port > 0
-        && !config.email_from.is_empty()
-        && !config.email_to.is_empty()
+        && !config.email_from.is_none()
+        && !config.email_to.is_none()
     {
         log::info!("Will try to send notifications via email");
         config.send_mail = true;
