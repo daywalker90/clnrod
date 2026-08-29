@@ -1,23 +1,23 @@
 use std::time::Duration;
 
-use anyhow::{anyhow, Error};
+use anyhow::{Error, anyhow};
 use cln_plugin::Plugin;
 use cln_rpc::primitives::PublicKey;
 use lettre::{
+    AsyncSmtpTransport,
+    AsyncTransport,
+    Message,
+    Tokio1Executor,
     message::header::ContentType,
     transport::smtp::{
         authentication::Credentials,
         client::{Tls, TlsParameters},
     },
-    AsyncSmtpTransport,
-    AsyncTransport,
-    Message,
-    Tokio1Executor,
 };
 
 use crate::structs::{Config, NotifyVerbosity, PluginState};
 
-async fn send_mail(config: &Config, subject: &String, body: &str, html: bool) -> Result<(), Error> {
+async fn send_mail(config: &Config, subject: &str, body: &str, html: bool) -> Result<(), Error> {
     let header = if html {
         ContentType::TEXT_HTML
     } else {
@@ -27,7 +27,7 @@ async fn send_mail(config: &Config, subject: &String, body: &str, html: bool) ->
     let email = Message::builder()
         .from(config.email_from.parse().unwrap())
         .to(config.email_to.parse().unwrap())
-        .subject(subject.clone())
+        .subject(subject)
         .header(header)
         .body(body.to_owned())
         .unwrap();
@@ -102,21 +102,25 @@ pub async fn notify(
     }
 
     if config.send_mail && config.notify_verbosity >= verbosity {
-        if let Err(e) = send_mail(
-            &config,
-            &subject.to_string(),
-            &format!(
-                "alias:\n{}\n\npubkey:\n{}\n\nMessage:\n{}\n\nCollected data:\n{}",
-                alias,
-                pubkey.map_or("None".to_string(), |pk| pk.to_string()),
-                body,
-                cache.map_or("None".to_string(), |pd| pd.to_string())
-            ),
-            false,
-        )
-        .await
-        {
-            log::warn!("Error sending mail: {e} pubkey: {pubkey:?}");
-        };
+        let subject_clone = subject.to_owned();
+        let body_clone = body.to_owned();
+        tokio::spawn(async move {
+            if let Err(e) = send_mail(
+                &config,
+                &subject_clone,
+                &format!(
+                    "alias:\n{}\n\npubkey:\n{}\n\nMessage:\n{}\n\nCollected data:\n{}",
+                    alias,
+                    pubkey.map_or("None".to_string(), |pk| pk.to_string()),
+                    body_clone,
+                    cache.map_or("None".to_string(), |pd| pd.to_string())
+                ),
+                false,
+            )
+            .await
+            {
+                log::warn!("Error sending mail: {e} pubkey: {pubkey:?}");
+            }
+        });
     }
 }
