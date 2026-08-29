@@ -7,6 +7,7 @@ use std::{
 
 use anyhow::{Error, anyhow};
 use cln_rpc::primitives::PublicKey;
+use lettre::message::Mailbox;
 use parking_lot::Mutex;
 use pest::pratt_parser::{Assoc, Op, PrattParser};
 use serde::{Deserialize, Serialize, de::IntoDeserializer};
@@ -84,8 +85,8 @@ pub struct Config {
     pub smtp_password: String,
     pub smtp_server: String,
     pub smtp_port: u16,
-    pub email_from: String,
-    pub email_to: String,
+    pub email_from: Option<Mailbox>,
+    pub email_to: Option<Mailbox>,
     pub send_mail: bool,
     pub notify_verbosity: NotifyVerbosity,
     pub ping_length: u16,
@@ -101,8 +102,8 @@ impl Config {
             smtp_password: String::new(),
             smtp_server: String::new(),
             smtp_port: 0,
-            email_from: String::new(),
-            email_to: String::new(),
+            email_from: None,
+            email_to: None,
             send_mail: false,
             notify_verbosity: NotifyVerbosity::All,
             ping_length: 256,
