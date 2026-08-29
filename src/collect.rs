@@ -293,6 +293,7 @@ pub async fn collect_data(
     channel_flags: ChannelFlags,
     custom_rule: &str,
     ping_length: u16,
+    from_testrule: bool,
 ) -> Result<PeerData, Error> {
     log::debug!("collect_data: start");
     let unix_now_s = SystemTime::now()
@@ -335,7 +336,7 @@ pub async fn collect_data(
 
     let mut cache_hit = false;
 
-    {
+    if !from_testrule {
         if let Some(cache) = plugin.state().peerdata_cache.lock().get(&pubkey) {
             if unix_now_s - cache.age <= CACHE_TTL {
                 log::debug!("collect_data: cache hit");

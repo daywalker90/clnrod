@@ -139,6 +139,7 @@ pub async fn clnrod_testrule(
         ChannelFlags { public },
         rule,
         config.ping_length,
+        true,
     )
     .await?;
     let parse_result = parse_rule(rule)?;
