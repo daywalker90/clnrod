@@ -71,7 +71,8 @@ pub async fn clnrod_testrule(
                 msats
                     .as_u64()
                     .ok_or_else(|| anyhow!("their_funding_sat: not a valid number"))?
-                    * 1000
+                    .checked_mul(1_000)
+                    .ok_or_else(|| anyhow!("their_funding_sat: exceeds maximum amount"))?
             } else {
                 return Err(anyhow!("their_funding_sat not set"));
             };
@@ -110,7 +111,8 @@ pub async fn clnrod_testrule(
                 msats
                     .as_u64()
                     .ok_or_else(|| anyhow!("their_funding_sat: not a valid number"))?
-                    * 1000
+                    .checked_mul(1_000)
+                    .ok_or_else(|| anyhow!("their_funding_sat: exceeds maximum amount"))?
             } else {
                 return Err(anyhow!("their_funding_sat not set"));
             };
