@@ -34,6 +34,7 @@ use crate::{
 };
 
 pub const CACHE_TTL: u64 = 3_600;
+pub const MAX_CACHE_ENTRIES: usize = 1_000;
 
 async fn get_oneml_data(
     pubkey: PublicKey,
@@ -440,6 +441,15 @@ pub async fn collect_data(
             age: unix_now_s,
         },
     );
+    if cache.len() > MAX_CACHE_ENTRIES {
+        if let Some(oldest_key) = cache
+            .iter()
+            .min_by_key(|(_, v)| v.age)
+            .map(|(k, _)| *k)
+        {
+            cache.remove(&oldest_key);
+        }
+    }
     log::debug!("collect_data: done");
     Ok(peer_data)
 }
