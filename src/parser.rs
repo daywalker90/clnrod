@@ -29,13 +29,31 @@ pub fn parse_rule(rule: &str) -> Result<Pairs<'_, Rule>, Error> {
                     rule.replace(pairs.as_str(), ""),
                 ));
             }
-            Ok(pairs.next().unwrap().into_inner())
+            let inner = pairs.next().unwrap().into_inner();
+            validate_integers(inner.clone())?;
+            Ok(inner)
         }
         Err(e) => {
             warn!("Error parsing custom_rule: {e}");
             Err(anyhow!("Error parsing custom_rule: {e}"))
         }
     }
+}
+
+fn validate_integers(pairs: Pairs<'_, Rule>) -> Result<(), Error> {
+    for pair in pairs {
+        if pair.as_rule() == Rule::INTEGER {
+            pair.as_str().parse::<u64>().map_err(|_| {
+                anyhow!(
+                    "Integer out of range, must be <= u64::MAX: {}",
+                    pair.as_str()
+                )
+            })?;
+        } else {
+            validate_integers(pair.into_inner())?;
+        }
+    }
+    Ok(())
 }
 
 pub fn evaluate_rule(
@@ -318,5 +336,30 @@ fn evaluate_value(pair: &Pair<Rule>, variables: &PeerData) -> Result<u64, Error>
             evaluate_value(&inner, variables)
         }
         e => Err(anyhow!("Unexpected rule:{e:?}")),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parse_rule_rejects_oversized_integer() {
+        let result = parse_rule("their_funding_sat > 18446744073709551616");
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("out of range"));
+    }
+
+    #[test]
+    fn test_parse_rule_accepts_u64_max() {
+        assert!(parse_rule("their_funding_sat > 18446744073709551615").is_ok());
+    }
+
+    #[test]
+    fn test_parse_rule_accepts_normal_rule() {
+        assert!(parse_rule("public == true && their_funding_sat > 100000").is_ok());
     }
 }
