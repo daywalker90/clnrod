@@ -278,6 +278,7 @@ pub async fn clnrod_managelists(
     let (listtype_str, operation_str, pubkey_str) = parse_managelists_args(&args)?;
     let pubkey = PublicKey::from_str(pubkey_str).context("invalid pubkey")?;
 
+    #[allow(clippy::collapsible_match)]
     match listtype_str {
         "allow" => {
             if plugin.state().config.lock().block_mode == BlockMode::Deny {

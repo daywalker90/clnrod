@@ -288,14 +288,35 @@ pub async fn setconfig_callback(
         }))
     })?;
 
-    let mut config = plugin.state().config.lock();
-    check_option(&mut config, name, &opt_value).map_err(|e| {
-        anyhow!(json!(RpcError {
-            code: Some(-32602),
-            message: e.to_string(),
-            data: None
-        }))
-    })?;
+    let old_blockmode;
+    let new_blockmode;
+    {
+        let mut config = plugin.state().config.lock();
+        old_blockmode = config.block_mode.clone();
+        check_option(&mut config, name, &opt_value).map_err(|e| {
+            anyhow!(json!(RpcError {
+                code: Some(-32602),
+                message: e.to_string(),
+                data: None
+            }))
+        })?;
+        new_blockmode = config.block_mode.clone();
+
+        activate_mail(&mut config);
+    }
+
+    if old_blockmode != new_blockmode {
+        read_pubkey_list(
+            plugin.state().pubkey_list.clone(),
+            &Path::new(&plugin.configuration().lightning_dir).join(PLUGIN_NAME),
+            new_blockmode,
+        )
+        .await?;
+    }
+
+    if name.eq(OPT_CUSTOM_RULE) {
+        plugin.state().peerdata_cache.lock().clear();
+    }
 
     plugin.set_option_str(name, opt_value).map_err(|e| {
         anyhow!(json!(RpcError {
@@ -304,12 +325,6 @@ pub async fn setconfig_callback(
             data: None
         }))
     })?;
-
-    activate_mail(&mut config);
-
-    if name.eq(OPT_CUSTOM_RULE) {
-        plugin.state().peerdata_cache.lock().clear();
-    }
 
     Ok(json!({}))
 }
