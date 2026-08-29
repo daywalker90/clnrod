@@ -30,6 +30,7 @@ use crate::{
         PeerInfo,
         PluginState,
     },
+    util::median,
 };
 
 pub const CACHE_TTL: u64 = 3_600;
@@ -412,9 +413,7 @@ pub async fn collect_data(
 
     if let Some(p) = ping_task {
         let pings = p.await??;
-        peer_data.ping = Some(u16::try_from(
-            pings.iter().map(|y| *y as usize).sum::<usize>() / pings.len(),
-        )?);
+        peer_data.ping = Some(median(&pings));
     }
     log::debug!("collect_data: ping: {:#?}", peer_data.ping);
 
@@ -537,5 +536,8 @@ pub async fn ln_ping(
     }
 
     results.sort_unstable();
+    if results.is_empty() {
+        return Err(anyhow!("got no ping values"));
+    }
     Ok(results)
 }
