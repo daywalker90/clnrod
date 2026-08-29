@@ -111,6 +111,7 @@ async fn release_hook(
             channel_flags,
             &config.custom_rule,
             config.ping_length,
+            false,
         )
         .await
         {
