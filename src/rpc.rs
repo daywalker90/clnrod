@@ -87,7 +87,7 @@ pub async fn clnrod_testrule(
                     .ok_or_else(|| anyhow!("rule: not a valid string"))?
             } else {
                 return Err(anyhow!(
-                    "Invalid input! Use command like this: lightning-cli clnrod-testparse \
+                    "Invalid input! Use command like this: lightning-cli clnrod-testrule \
                     rule='x == 5' pubkey=XXXXX their_funding_sat=50000 public=true"
                 ));
             };
