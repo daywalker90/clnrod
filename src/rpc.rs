@@ -27,6 +27,7 @@ use crate::{
     notify::notify,
     parser::{evaluate_rule, parse_rule},
     structs::{BlockMode, ChannelFlags, ClnrodParser, NotifyVerbosity, PluginState},
+    util::median,
 };
 
 pub async fn clnrod_reload(
@@ -267,7 +268,7 @@ pub async fn clnrod_testping(
 
     let pings = ln_ping(plugin, pubkey, count, length).await?;
     let sum_pings = pings.iter().map(|y| u64::from(*y)).sum::<u64>();
-    let median = pings.get(pings.len() / 2).unwrap_or(&0);
+    let median = median(&pings);
     Ok(json!({"min":pings.iter().min(),
         "avg":sum_pings/(pings.len() as u64),
         "median":median,

@@ -30,6 +30,7 @@ mod parser;
 mod rpc;
 mod structs;
 mod tasks;
+mod util;
 
 pub const PLUGIN_NAME: &str = "clnrod";
 
