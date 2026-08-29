@@ -720,3 +720,43 @@ def test_external_datasources(node_factory, get_plugin):  # noqa: F811
             "oneml_channelcount > 0 && amboss_has_nostr == true",
         ],
     )
+
+
+def test_blockmode_switch_stale_list(node_factory, bitcoind, get_plugin):  # noqa: F811
+    l1, l2 = node_factory.get_nodes(
+        2,
+        opts=[
+            {
+                "plugin": get_plugin,
+                "clnrod-blockmode": "deny",
+                "clnrod-denymessage": "No thanks",
+            },
+            {},
+        ],
+    )
+
+    l2.fundwallet(10_000_000)
+
+    with open(l1.info["lightning-dir"] + "/clnrod/denylist.txt", "w") as af:
+        af.writelines(l2.info["id"] + "\n")
+    l1.rpc.call("clnrod-reload")
+
+    # Deny mode: l2 is on the denylist -> rejected.
+    with pytest.raises(RpcError, match="No thanks"):
+        l2.rpc.fundchannel(
+            l1.info["id"] + "@localhost:" + str(l1.port),
+            1_000_000,
+            mindepth=1,
+            announce=True,
+        )
+
+    # Switch to allow mode via setconfig (no reload).
+    l1.rpc.setconfig("clnrod-blockmode", "allow")
+
+    with pytest.raises(RpcError, match="No thanks"):
+        l2.rpc.fundchannel(
+            l1.info["id"] + "@localhost:" + str(l1.port),
+            1_000_000,
+            mindepth=1,
+            announce=True,
+        )
