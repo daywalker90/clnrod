@@ -196,6 +196,41 @@ def test_clnrod_custom_rule(node_factory, bitcoind, get_plugin):  # noqa: F811
         )
 
 
+def test_clnrod_abuse_throttle(node_factory, get_plugin):  # noqa: F811
+    l1, l2 = node_factory.get_nodes(
+        2,
+        opts=[
+            {
+                "plugin": get_plugin,
+                "clnrod-customrule": "cln_channel_count >= 1",
+                "clnrod-denymessage": "No thanks",
+            },
+            {},
+        ],
+    )
+
+    l2.fundwallet(10_000_000)
+
+    # l2 has no announcement/channels yet, so the gossip lookup fails and
+    # each rejected attempt is remembered.
+    for _ in range(3):
+        with pytest.raises(RpcError, match="No thanks"):
+            l2.rpc.fundchannel(
+                l1.info["id"] + "@localhost:" + str(l1.port),
+                1_000_000,
+                mindepth=1,
+            )
+
+    # The 4th attempt within the abuse window is throttled instantly (no lookups, no emails).
+    with pytest.raises(RpcError, match="No thanks"):
+        l2.rpc.fundchannel(
+            l1.info["id"] + "@localhost:" + str(l1.port),
+            1_000_000,
+            mindepth=1,
+        )
+    l1.daemon.wait_for_log(r"throttled after 3 failed attempts")
+
+
 def test_clnrod_custom_allow(node_factory, get_plugin):  # noqa: F811
     l1, l2 = node_factory.get_nodes(
         2,

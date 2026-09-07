@@ -9,6 +9,7 @@ use cln_rpc::{
 };
 
 use crate::{
+    abuse::{ABUSE_THRESHOLD, check_abuse, clear_abuse, record_abuse, should_notify},
     collect::collect_data,
     notify::notify,
     parser::{evaluate_rule, parse_rule},
@@ -104,6 +105,14 @@ async fn release_hook(
     );
 
     let allowed_custom = if !list_matched && !config.custom_rule.is_empty() {
+        if !is_zeroconf_allowed && check_abuse(&plugin.state().abuse_cache, pubkey) {
+            log::info!(
+                "Clnrod channel rejected: {pubkey} throttled after {} failed attempts \
+                without announcement/channels",
+                ABUSE_THRESHOLD
+            );
+            return Err(create_reject_response(&config, "too many attempts"));
+        }
         let data = match collect_data(
             &plugin,
             pubkey,
@@ -117,17 +126,24 @@ async fn release_hook(
         {
             Ok(da) => da,
             Err(e) => {
+                if e.to_string().contains("no node found") {
+                    record_abuse(&plugin.state().abuse_cache, pubkey);
+                }
                 notify(
                     &plugin,
                     "Clnrod channel rejected. COLLECT_DATA ERROR",
                     &e.to_string(),
                     Some(pubkey),
                     NotifyVerbosity::Error,
+                    should_notify(&plugin.state().abuse_cache, pubkey),
                 )
                 .await;
                 return Err(create_reject_response(&config, "internal error"));
             }
         };
+        if data.peerinfo.channel_count == Some(0) {
+            record_abuse(&plugin.state().abuse_cache, pubkey);
+        }
         let parser = ClnrodParser::new();
         match evaluate_rule(&parser, parse_rule(&config.custom_rule).unwrap(), &data) {
             Ok(o) => Some(o),
@@ -138,6 +154,7 @@ async fn release_hook(
                     &e.to_string(),
                     Some(pubkey),
                     NotifyVerbosity::Error,
+                    should_notify(&plugin.state().abuse_cache, pubkey),
                 )
                 .await;
                 return Err(create_reject_response(&config, "internal error"));
@@ -156,8 +173,10 @@ async fn release_hook(
                     "On allowlist",
                     Some(pubkey),
                     NotifyVerbosity::Accepted,
+                    true,
                 )
                 .await;
+                clear_abuse(&plugin.state().abuse_cache, pubkey);
                 Ok(is_zeroconf_allowed)
             } else if let Some(cu) = allowed_custom {
                 if cu.0 {
@@ -167,8 +186,10 @@ async fn release_hook(
                         "Not on allowlist, but accepted by custom rule",
                         Some(pubkey),
                         NotifyVerbosity::Accepted,
+                        true,
                     )
                     .await;
+                    clear_abuse(&plugin.state().abuse_cache, pubkey);
                     Ok(is_zeroconf_allowed)
                 } else {
                     let reject_reason = if let Some(rej_res) = cu.1 {
@@ -185,6 +206,7 @@ async fn release_hook(
                         ),
                         Some(pubkey),
                         NotifyVerbosity::All,
+                        should_notify(&plugin.state().abuse_cache, pubkey),
                     )
                     .await;
                     Err(create_reject_response(&config, &reject_reason))
@@ -196,6 +218,7 @@ async fn release_hook(
                     "Not on allowlist and no custom rule",
                     Some(pubkey),
                     NotifyVerbosity::All,
+                    should_notify(&plugin.state().abuse_cache, pubkey),
                 )
                 .await;
                 Err(create_reject_response(&config, "not whitelisted"))
@@ -209,6 +232,7 @@ async fn release_hook(
                     "On denylist",
                     Some(pubkey),
                     NotifyVerbosity::All,
+                    should_notify(&plugin.state().abuse_cache, pubkey),
                 )
                 .await;
                 Err(create_reject_response(&config, "blacklisted"))
@@ -220,8 +244,10 @@ async fn release_hook(
                         "Not on denylist and accepted by custom rule",
                         Some(pubkey),
                         NotifyVerbosity::Accepted,
+                        true,
                     )
                     .await;
+                    clear_abuse(&plugin.state().abuse_cache, pubkey);
                     Ok(is_zeroconf_allowed)
                 } else {
                     let reject_reason = if let Some(rej_res) = cu.1 {
@@ -238,6 +264,7 @@ async fn release_hook(
                         ),
                         Some(pubkey),
                         NotifyVerbosity::All,
+                        should_notify(&plugin.state().abuse_cache, pubkey),
                     )
                     .await;
                     Err(create_reject_response(&config, &reject_reason))
@@ -249,8 +276,10 @@ async fn release_hook(
                     "not on denylist and no custom rule",
                     Some(pubkey),
                     NotifyVerbosity::Accepted,
+                    true,
                 )
                 .await;
+                clear_abuse(&plugin.state().abuse_cache, pubkey);
                 Ok(is_zeroconf_allowed)
             }
         }

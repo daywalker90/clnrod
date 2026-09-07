@@ -22,6 +22,7 @@ use tokio::time;
 
 use crate::rpc::clnrod_managelists;
 
+mod abuse;
 mod collect;
 mod config;
 mod hooks;

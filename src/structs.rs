@@ -23,6 +23,7 @@ pub struct PluginState {
     pub oneml_lock: Arc<tokio::sync::Mutex<u128>>,
     pub peerdata_cache: Arc<Mutex<HashMap<PublicKey, PeerDataCache>>>,
     pub alias_cache: Arc<Mutex<HashMap<PublicKey, String>>>,
+    pub abuse_cache: Arc<Mutex<HashMap<PublicKey, AbuseEntry>>>,
 }
 impl PluginState {
     pub fn new() -> PluginState {
@@ -34,8 +35,16 @@ impl PluginState {
             oneml_lock: Arc::new(tokio::sync::Mutex::new(0)),
             peerdata_cache: Arc::new(Mutex::new(HashMap::new())),
             alias_cache: Arc::new(Mutex::new(HashMap::new())),
+            abuse_cache: Arc::new(Mutex::new(HashMap::new())),
         }
     }
+}
+
+#[derive(Clone, Debug)]
+pub struct AbuseEntry {
+    pub tries: u32,
+    pub last_try: u64,
+    pub last_notified: u64,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]

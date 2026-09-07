@@ -368,7 +368,7 @@ pub async fn collect_data(
         None
     };
 
-    let gossip_task = if !cache_hit && custom_rule.to_ascii_lowercase().contains("cln_") {
+    let gossip_task = if !cache_hit {
         Some(tokio::spawn(async move {
             get_gossip_data(rpc_path, pubkey).await
         }))
@@ -419,7 +419,17 @@ pub async fn collect_data(
     log::debug!("collect_data: ping: {:#?}", peer_data.ping);
 
     if let Some(gdata) = gossip_task {
-        peer_data.peerinfo = gdata.await??;
+        match gdata.await {
+            Ok(Ok(info)) => peer_data.peerinfo = info,
+            Ok(Err(e)) => {
+                if custom_rule.to_ascii_lowercase().contains("cln_") {
+                    return Err(e);
+                }
+                log::debug!("collect_data: peer not in gossip graph: {e}");
+                peer_data.peerinfo.channel_count = Some(0);
+            }
+            Err(e) => return Err(e.into()),
+        }
     }
     log::debug!("collect_data: peerinfo: {:#?}", peer_data.peerinfo);
 
@@ -442,11 +452,7 @@ pub async fn collect_data(
         },
     );
     if cache.len() > MAX_CACHE_ENTRIES {
-        if let Some(oldest_key) = cache
-            .iter()
-            .min_by_key(|(_, v)| v.age)
-            .map(|(k, _)| *k)
-        {
+        if let Some(oldest_key) = cache.iter().min_by_key(|(_, v)| v.age).map(|(k, _)| *k) {
             cache.remove(&oldest_key);
         }
     }
@@ -522,6 +528,7 @@ pub async fn ln_ping(
                     ),
                     Some(pubkey),
                     NotifyVerbosity::Error,
+                    true,
                 )
                 .await;
                 break;

@@ -65,6 +65,7 @@ pub async fn notify(
     body: &str,
     pubkey: Option<PublicKey>,
     verbosity: NotifyVerbosity,
+    allow_mail: bool,
 ) {
     let alias = if let Some(pk) = &pubkey {
         plugin
@@ -101,7 +102,7 @@ pub async fn notify(
         );
     }
 
-    if config.send_mail && config.notify_verbosity >= verbosity {
+    if allow_mail && config.send_mail && config.notify_verbosity >= verbosity {
         let subject_clone = subject.to_owned();
         let body_clone = body.to_owned();
         tokio::spawn(async move {
