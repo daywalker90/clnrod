@@ -165,6 +165,7 @@ pub async fn clnrod_testrule(
             ),
             Some(pubkey),
             NotifyVerbosity::Error,
+            true,
         )
         .await;
     }
@@ -183,6 +184,7 @@ pub async fn clnrod_testmail(
             "called clnrod-testmail",
             None,
             NotifyVerbosity::Error,
+            true,
         )
         .await;
         return Ok(json!({"result":"success"}));

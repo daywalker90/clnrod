@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.6.2] - 2026-09-13
+
+### Changed
+- repeated channel rejections are now cached for unannounced nodes for 2h
+- repeated channel rejections are now only sending one email per node id per 24h
+
 ## [0.6.1] - 2026-08-29
 
 ### Changed

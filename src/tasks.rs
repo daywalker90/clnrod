@@ -6,7 +6,7 @@ use std::{
 use cln_plugin::Plugin;
 use cln_rpc::{ClnRpc, model::requests::ListnodesRequest};
 
-use crate::{collect::CACHE_TTL, structs::PluginState};
+use crate::{abuse::evict_abuse, collect::CACHE_TTL, structs::PluginState};
 
 pub async fn refresh_alias_cache(plugin: Plugin<PluginState>) -> Result<(), anyhow::Error> {
     let now = Instant::now();
@@ -40,4 +40,6 @@ pub fn evict_cache(plugin: &Plugin<PluginState>) {
 
     let mut caches = plugin.state().peerdata_cache.lock();
     caches.retain(|_, v| now_unix - v.age <= CACHE_TTL);
+
+    evict_abuse(&plugin.state().abuse_cache);
 }
