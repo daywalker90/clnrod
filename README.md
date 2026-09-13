@@ -61,10 +61,10 @@ Core lightning (CLN) plugin to allow/deny incoming channel opens (including zero
 For general plugin installation instructions see the plugins repo [README.md](https://github.com/lightningd/plugins/blob/master/README.md#Installation)
 
 Release binaries for
-* x86_64-linux
-* armv7-linux (Raspberry Pi 32bit)
-* aarch64-linux (Raspberry Pi 64bit)
-* universal-apple-darwin (macOS)
+* x86_64-linux-gnu
+* armv7-linux-gnueabihf (Raspberry Pi 32bit)
+* aarch64-linux-gnu (Raspberry Pi 64bit)
+* universal-apple-darwin (macOS x86_64 + aarch64)
 
 can be found on the [release](https://github.com/daywalker90/clnrod/releases) page. If you are unsure about your architecture you can run ``uname -m``.
 
@@ -86,7 +86,7 @@ cargo build --release
 
 After that the binary will be here: ``target/release/clnrod``
 
-Note: Release binaries are built using ``cross`` and the ``optimized`` profile.
+Note: Release binaries are built with the ``optimized`` profile.
 
 # Documentation
 If you want to make sure that no channels open to you without going through this plugin, install it as an ``important-plugin``. CLN will stop completely if the plugin should ever crash. If you only install clnrod as a normal plugin and it crashes, all channels will be accepted as usual.
@@ -98,13 +98,14 @@ New rpc methods with this plugin:
     * will create a ``allowlist.txt.lock``/``denylist.txt.lock``/``zeroconflist.txt.lock`` to prevent contention
     * stale lock files (older than 60 seconds) are removed automatically, and acquisition fails with an error after 120 seconds
     * *listtype* is one of `allow`, `deny` or `zeroconf`
+    * the list type must match your block mode: in allow mode only `allow`, in deny mode only `deny`; `zeroconf` always works
     * *operation* is one of `add` or `remove`
     * *pubkey* is the node public key to add or remove from the allow, deny or zeroconf list
 * **clnrod-reload**
     * reload ``allowlist.txt``/``denylist.txt``/``zeroconflist.txt``
     * empty lines and lines starting with ``#`` or ``//`` are ignored in all list files
 * **clnrod-testrule** *pubkey* *public* *their_funding_sat* *rule*
-    * test your custom *rule* with a fake channel opening by a peer with *pubkey* who will make the channel *public* and *their_funding_sat* big
+    * test your custom *rule* with a fake channel opening by a peer with *pubkey*, using the *public* and *their_funding_sat* values you provide
     * example: ``lightning-cli clnrod-testrule -k pubkey=02eadbd9e7557375161df8b646776a547c5cbc2e95b3071ec81553f8ec2cea3b8c public=true their_funding_sat=1000000 rule='amboss_terminal_web_rank < 1000'`` 
 * **clnrod-testmail**
     * send a test mail to check your email config
@@ -116,20 +117,26 @@ New rpc methods with this plugin:
 ## Blockmode: allow
 Setting the blockmode to allow means:
 1. if a channel opener's pubkey is on the allowlist (``~/.lightning/<network>/clnrod/allowlist.txt``) the channel will always be accepted, no matter the custom rule
-2. if such a pubkey is not on the allowlist it has to face the custom rule if their is one, otherwise it will be rejected
+2. if such a pubkey is not on the allowlist it has to face the custom rule if there is one, otherwise it will be rejected
 3. if the custom rule returns ``true`` the channel will be accepted, otherwise (``false``) it will be rejected
 
 ## Blockmode: deny
 Setting the blockmode to deny means:
 1. if a channel opener's pubkey is on the denylist (``~/.lightning/<network>/clnrod/denylist.txt``) the channel will always be denied, no matter the custom rule
-2. if such a pubkey is not on the denylist it has to face the custom rule if their is one, otherwise it will be accepted
+2. if such a pubkey is not on the denylist it has to face the custom rule if there is one, otherwise it will be accepted
 3. if the custom rule returns ``true`` the channel will be accepted, otherwise (``false``) it will be rejected
 
 ## Zeroconf channels
 If a channel tries to open a zeroconf channel (bit 50: `option_zeroconf`) it must be in the `zeroconflist.txt` file to be allowed to do so. All other restrictions from your block mode still apply!
 
 ## Logs/E-mails
-Email configuration is optional and everything gets logged regardless
+Email configuration is optional and everything gets logged regardless.
+* Accepted channels are always reported immediately: in the log, and by email when ``clnrod-notify-verbosity`` allows it.
+* Rejection emails (not on the list, custom rule returned false, errors) are throttled to at most one per peer per 24 hours, so a peer that keeps retrying cannot spam your inbox. The log is not throttled: every rejection is still written to the log.
+* Set ``clnrod-notify-verbosity`` to control which categories produce emails.
+
+## Abuse protection
+Peers that are not in your gossip graph (no node announcement and no channels) and get rejected are remembered. After 3 rejected attempts within 2 hours they are rejected instantly for up to 2 hours, without expensive lookups. This also applies to custom rules that do not use ``cln_`` variables. Peers on the allow/zeroconf lists are exempt, and a peer that is eventually accepted is forgotten again. The remember list is capped at 1000 entries and entries are dropped after 24 hours.
 
 ## Custom rule
 The custom rule can make use of the following symbols:
@@ -145,7 +152,7 @@ The custom rule can make use of the following symbols:
 * a boolean value is either ``true``, ``false``, ``1`` or ``0``
 
 ### Variables
-Variables starting with ``cln_`` query your own gossip, ``amboss_`` the [Amboss](https://amboss.space) API and ``oneml_`` the [1ML](https://1ml.com/) API. There is an one hour cache for collecting data (capped at 1000 entries) that will be reset if you change the ``clnrod-customrule`` option.
+Variables starting with ``cln_`` query your own gossip, ``amboss_`` the [Amboss](https://amboss.space) API and ``oneml_`` the [1ML](https://1ml.com/) API. Exceptions: ``cln_multi_channel_count`` reads your own channel list, and ``their_funding_sat``, ``public`` and ``ping`` come from the channel open attempt or a ping to the peer. There is an one hour cache for collecting data (capped at 1000 entries) that will be reset if you change the ``clnrod-customrule`` option.
 * ``their_funding_sat``: how much sats they are willing to open with on their side
 * ``public``: if the peer intends to open the channel as public this will be ``true`` otherwise ``false``
 * ``ping`` ( :warning: DO NOT USE ON CLN 25.05 OR OLDER: your CLN ping command might get stuck and require a node restart!): time it takes in ms to send a ``clnrod-pinglength`` (Default: 256) bytes packet to the opener and back. Defaults to the median of 3 pings. Timeouts and errors will log but not flat out reject the channel, instead the timeout value of 5000 will be used. It is recommended to have email notifications on or watch the logs for ping timeouts (``Clnrod ping TIMEOUT``)
@@ -199,7 +206,7 @@ You can mix two methods and if you set the same option with different methods, i
 * ``clnrod-smtp-port``: smtp server port for email notifications
 * ``clnrod-email-from``: email "from" field for email notifications
 * ``clnrod-email-to``: email to send to for email notifications
-* ``clnrod-notify-verbosity``: set verbosity level of emails to one of 
+* ``clnrod-notify-verbosity``: set verbosity level of emails to one of (defaults to `ALL`)
     * ``ERROR``: only errors during channel negotiation
     * ``ACCEPTED``: errors and accepted channels
     * ``ALL``: errors, accepted and rejected channels
