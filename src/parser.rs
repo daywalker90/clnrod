@@ -1,18 +1,18 @@
 #[cfg(test)]
 use std::{println as warn, println as debug}; // Workaround to use prinltn! for logging in tests.
 
-use anyhow::{anyhow, Error};
+use anyhow::{Error, anyhow};
 #[cfg(not(test))]
 use log::{debug, warn}; // Use log crate when building application
 use pest::{
-    iterators::{Pair, Pairs},
     Parser,
+    iterators::{Pair, Pairs},
 };
 
 use crate::{
-    structs::{ClnrodParser, PeerData},
     Rule,
     RulesParser,
+    structs::{ClnrodParser, PeerData},
 };
 
 pub fn parse_rule(rule: &str) -> Result<Pairs<'_, Rule>, Error> {
@@ -155,6 +155,7 @@ fn evaluate_comparison(
     }
 }
 
+#[allow(clippy::too_many_lines)]
 fn evaluate_value(pair: &Pair<Rule>, variables: &PeerData) -> Result<u64, Error> {
     match pair.as_rule() {
         Rule::INTEGER => Ok(pair.as_str().parse::<u64>().unwrap()),
@@ -347,10 +348,7 @@ mod tests {
     fn test_parse_rule_rejects_oversized_integer() {
         let result = parse_rule("their_funding_sat > 18446744073709551616");
         assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("out of range"));
+        assert!(result.unwrap_err().to_string().contains("out of range"));
     }
 
     #[test]

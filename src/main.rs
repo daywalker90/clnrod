@@ -49,6 +49,7 @@ const OPT_EMAIL_TO: &str = "clnrod-email-to";
 const OPT_NOTIFY_VERBOSITY: &str = "clnrod-notify-verbosity";
 
 #[tokio::main]
+#[allow(clippy::too_many_lines)]
 async fn main() -> Result<(), anyhow::Error> {
     unsafe { std::env::set_var("CLN_PLUGIN_LOG", "clnrod=debug,info") };
     log_panics::init();

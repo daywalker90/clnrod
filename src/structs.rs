@@ -127,6 +127,7 @@ pub struct PeerDataCache {
 }
 
 impl Display for PeerDataCache {
+    #[allow(clippy::too_many_lines)]
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         let mut result = format!(
             "their_funding_sat: {}\npublic: {}",
