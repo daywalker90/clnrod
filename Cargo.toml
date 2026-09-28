@@ -1,6 +1,6 @@
 [package]
 name = "clnrod"
-version = "0.6.2"
+version = "0.7.0"
 edition = "2024"
 rust-version = "1.85.0"
 
@@ -22,6 +22,7 @@ cln-plugin = "0.7"
 bitreq = { version = "0.4", features = [
     "async-https-rustls",
     "json-using-serde",
+    "proxy",
 ] }
 lettre = { version = "0.11", default-features = false, features = [
     "tokio1-rustls-tls",

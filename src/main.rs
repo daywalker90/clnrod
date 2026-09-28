@@ -20,7 +20,7 @@ use rpc::{clnrod_reload, clnrod_testmail, clnrod_testping, clnrod_testrule};
 use structs::PluginState;
 use tokio::time;
 
-use crate::rpc::clnrod_managelists;
+use crate::{rpc::clnrod_managelists, util::get_proxy};
 
 mod abuse;
 mod collect;
@@ -157,6 +157,15 @@ async fn main() -> Result<(), anyhow::Error> {
         }
         None => return Err(anyhow!("Error configuring clnrod!")),
     };
+    let proxy = match get_proxy(&confplugin) {
+        Ok(p) => p,
+        Err(e) => {
+            return confplugin
+                .disable(&format!("Error getting proxy: {e}"))
+                .await;
+        }
+    };
+    state.config.lock().proxy = proxy;
     match confplugin.start(state).await {
         Ok(plugin) => {
             let aliasclone = plugin.clone();
