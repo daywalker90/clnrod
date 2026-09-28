@@ -19,7 +19,7 @@ cln-rpc = "0.7"
 cln-plugin = "0.7"
 # cln-plugin = { path = "../lightning/plugins/", version = "^0.6" }
 
-bitreq = { version = "0.3", features = [
+bitreq = { version = "0.4", features = [
     "async-https-rustls",
     "json-using-serde",
 ] }

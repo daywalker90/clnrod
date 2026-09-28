@@ -55,6 +55,7 @@ pub async fn clnrod_reload(
          "zeroconf_removed":zero_removed, "zeroconf_added":zero_added}))
 }
 
+#[allow(clippy::too_many_lines)]
 pub async fn clnrod_testrule(
     plugin: Plugin<PluginState>,
     args: serde_json::Value,

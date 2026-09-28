@@ -88,6 +88,7 @@ pub async fn openchannel2_hook(
     }
 }
 
+#[allow(clippy::too_many_lines)]
 async fn release_hook(
     plugin: Plugin<PluginState>,
     pubkey: PublicKey,
@@ -107,9 +108,8 @@ async fn release_hook(
     let allowed_custom = if !list_matched && !config.custom_rule.is_empty() {
         if !is_zeroconf_allowed && check_abuse(&plugin.state().abuse_cache, pubkey) {
             log::info!(
-                "Clnrod channel rejected: {pubkey} throttled after {} failed attempts \
-                without announcement/channels",
-                ABUSE_THRESHOLD
+                "Clnrod channel rejected: {pubkey} throttled after {ABUSE_THRESHOLD} failed \
+                attempts without announcement/channels"
             );
             return Err(create_reject_response(&config, "too many attempts"));
         }

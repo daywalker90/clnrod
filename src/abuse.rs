@@ -89,6 +89,7 @@ pub fn clear_abuse(cache: &Arc<Mutex<HashMap<PublicKey, AbuseEntry>>>, pubkey: P
     cache.lock().remove(&pubkey);
 }
 
+#[allow(clippy::doc_markdown)]
 /// Whether a notification (email) may be sent about this peer. Every peer,
 /// abuser or not, is notified at most once per ABUSE_NOTIFY_INTERVAL_SECS.
 /// Unknown peers are added to the cache so the cooldown also applies to
@@ -100,27 +101,24 @@ pub fn should_notify(
 ) -> bool {
     let mut cache = cache.lock();
     let unix_now_s = now();
-    match cache.get_mut(&pubkey) {
-        Some(entry) => {
-            if unix_now_s - entry.last_notified >= ABUSE_NOTIFY_INTERVAL_SECS {
-                entry.last_notified = unix_now_s;
-                true
-            } else {
-                false
-            }
-        }
-        None => {
-            cache.insert(
-                pubkey,
-                AbuseEntry {
-                    tries: 0,
-                    last_try: unix_now_s,
-                    last_notified: unix_now_s,
-                },
-            );
-            evict_oldest(&mut cache);
+    if let Some(entry) = cache.get_mut(&pubkey) {
+        if unix_now_s - entry.last_notified >= ABUSE_NOTIFY_INTERVAL_SECS {
+            entry.last_notified = unix_now_s;
             true
+        } else {
+            false
         }
+    } else {
+        cache.insert(
+            pubkey,
+            AbuseEntry {
+                tries: 0,
+                last_try: unix_now_s,
+                last_notified: unix_now_s,
+            },
+        );
+        evict_oldest(&mut cache);
+        true
     }
 }
 
