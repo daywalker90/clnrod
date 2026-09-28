@@ -5,6 +5,7 @@ use std::{
 };
 
 use anyhow::{Error, anyhow};
+use bitreq::Proxy;
 use cln_plugin::Plugin;
 use cln_rpc::{
     ClnRpc,
@@ -40,6 +41,7 @@ async fn get_oneml_data(
     pubkey: PublicKey,
     network: String,
     oneml_lock: Arc<tokio::sync::Mutex<u128>>,
+    proxy: Option<Proxy>,
 ) -> Result<OneMl, Error> {
     let mut last_api_call = oneml_lock.lock().await;
     log::debug!("oneml_data: start");
@@ -56,21 +58,22 @@ async fn get_oneml_data(
             .as_millis();
     }
 
-    let response = match network {
+    let oneml_network_url = match network {
         name if name.eq_ignore_ascii_case("bitcoin") || name.eq_ignore_ascii_case("regtest") => {
-            bitreq::get(format!("https://1ml.com/node/{pubkey}/json"))
-                .with_timeout(Duration::from_secs(30))
-                .send_async()
-                .await?
+            format!("https://1ml.com/node/{pubkey}/json")
         }
         name if name.eq_ignore_ascii_case("testnet") => {
-            bitreq::get(format!("https://1ml.com/testnet/node/{pubkey}/json"))
-                .with_timeout(Duration::from_secs(30))
-                .send_async()
-                .await?
+            format!("https://1ml.com/testnet/node/{pubkey}/json")
         }
         _ => return Err(anyhow!("network not supported for 1ML: {network}")),
     };
+
+    let mut request = bitreq::get(oneml_network_url).with_timeout(Duration::from_secs(30));
+    if let Some(prx) = proxy {
+        request = request.with_proxy(prx);
+    }
+
+    let response = request.send_async().await?;
 
     *last_api_call = SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -109,6 +112,7 @@ async fn get_amboss_data(
     pubkey: PublicKey,
     network: String,
     amboss_lock: Arc<tokio::sync::Mutex<u128>>,
+    proxy: Option<Proxy>,
 ) -> Result<AmbossResponse, Error> {
     let mut last_api_call = amboss_lock.lock().await;
     log::debug!("amboss_data: start");
@@ -155,12 +159,14 @@ async fn get_amboss_data(
 
     let response = match network {
         name if name.eq_ignore_ascii_case("bitcoin") || name.eq_ignore_ascii_case("regtest") => {
-            bitreq::post("https://api.amboss.space/graphql")
+            let mut request = bitreq::post("https://api.amboss.space/graphql")
                 .with_header("Content-Type", "application/json")
                 .with_json(&json!({"query":query, "variables":{"pubkey":pubkey.to_string()}}))?
-                .with_timeout(Duration::from_secs(30))
-                .send_async()
-                .await?
+                .with_timeout(Duration::from_secs(30));
+            if let Some(prx) = proxy {
+                request = request.with_proxy(prx);
+            }
+            request.send_async().await?
         }
         _ => return Err(anyhow!("network not supported for Amboss: {network}")),
     };
@@ -380,11 +386,17 @@ pub async fn collect_data(
     let amboss_task = if !cache_hit && custom_rule.to_ascii_lowercase().contains("amboss_") {
         let network_amboss = network.clone();
         let amboss_lock = plugin.state().amboss_lock.clone();
+        let amboss_proxy = plugin.state().config.lock().proxy.clone();
         Some(tokio::spawn(async move {
             let mut attempts = 1;
             loop {
-                let result =
-                    get_amboss_data(pubkey, network_amboss.clone(), amboss_lock.clone()).await;
+                let result = get_amboss_data(
+                    pubkey,
+                    network_amboss.clone(),
+                    amboss_lock.clone(),
+                    amboss_proxy.clone(),
+                )
+                .await;
                 if result.is_ok() || attempts >= 3 {
                     break result;
                 }
@@ -398,10 +410,17 @@ pub async fn collect_data(
 
     let oneml_task = if !cache_hit && custom_rule.to_ascii_lowercase().contains("oneml_") {
         let oneml_lock = plugin.state().oneml_lock.clone();
+        let oneml_proxy = plugin.state().config.lock().proxy.clone();
         Some(tokio::spawn(async move {
             let mut attempts = 1;
             loop {
-                let result = get_oneml_data(pubkey, network.clone(), oneml_lock.clone()).await;
+                let result = get_oneml_data(
+                    pubkey,
+                    network.clone(),
+                    oneml_lock.clone(),
+                    oneml_proxy.clone(),
+                )
+                .await;
                 if result.is_ok() || attempts >= 3 {
                     break result;
                 }

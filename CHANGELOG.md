@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.7.0] - 2026-09-28
+
+### Added
+- clnrod now automatically uses your CLN proxy if it is configured with `always-use-proxy`
+
+### Changed
+- updated bitreq dependency to 0.4
+
 ## [0.6.2] - 2026-09-13
 
 ### Changed

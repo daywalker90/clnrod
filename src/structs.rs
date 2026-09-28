@@ -6,6 +6,7 @@ use std::{
 };
 
 use anyhow::{Error, anyhow};
+use bitreq::Proxy;
 use cln_rpc::primitives::PublicKey;
 use lettre::message::Mailbox;
 use parking_lot::Mutex;
@@ -99,6 +100,7 @@ pub struct Config {
     pub send_mail: bool,
     pub notify_verbosity: NotifyVerbosity,
     pub ping_length: u16,
+    pub proxy: Option<Proxy>,
 }
 impl Config {
     pub fn new() -> Config {
@@ -116,6 +118,7 @@ impl Config {
             send_mail: false,
             notify_verbosity: NotifyVerbosity::All,
             ping_length: 256,
+            proxy: None,
         }
     }
 }
